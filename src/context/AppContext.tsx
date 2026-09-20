@@ -9,6 +9,11 @@ import {
 import { loadStoredData, saveStoredData } from '../lib/storage';
 import { useAuth } from './AuthContext';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import {
+  checkRateLimit,
+  recordRateLimitAttempt,
+  RATE_LIMIT_CONFIGS,
+} from '../lib/rateLimit';
 
 interface AppContextType {
   clients: Client[];
@@ -203,6 +208,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Add Task
   const addTask = (data: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => {
+    const rateLimitCheck = checkRateLimit('action_task_create', RATE_LIMIT_CONFIGS.TASK_CREATE);
+    if (!rateLimitCheck.allowed) {
+      console.warn(`Task creation rate limit exceeded. Please wait ${rateLimitCheck.retryAfterSeconds}s.`);
+      return;
+    }
+    recordRateLimitAttempt('action_task_create', RATE_LIMIT_CONFIGS.TASK_CREATE);
+
     const newId = generateUUID();
     const now = new Date().toISOString();
     const safeDueDate = toSafeISODate(data.due_date);
@@ -309,6 +321,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Client Operations
   const addClient = (data: Omit<Client, 'id' | 'created_at' | 'updated_at'>) => {
+    const rateLimitCheck = checkRateLimit('action_client_create', RATE_LIMIT_CONFIGS.CLIENT_CREATE);
+    if (!rateLimitCheck.allowed) {
+      console.warn(`Client creation rate limit exceeded. Please wait ${rateLimitCheck.retryAfterSeconds}s.`);
+      return;
+    }
+    recordRateLimitAttempt('action_client_create', RATE_LIMIT_CONFIGS.CLIENT_CREATE);
+
     const newId = generateUUID();
     const now = new Date().toISOString();
     const newClient: Client = {
@@ -387,6 +406,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Project Operations
   const addProject = (data: Omit<Project, 'id' | 'created_at' | 'updated_at'>) => {
+    const rateLimitCheck = checkRateLimit('action_project_create', RATE_LIMIT_CONFIGS.PROJECT_CREATE);
+    if (!rateLimitCheck.allowed) {
+      console.warn(`Project creation rate limit exceeded. Please wait ${rateLimitCheck.retryAfterSeconds}s.`);
+      return;
+    }
+    recordRateLimitAttempt('action_project_create', RATE_LIMIT_CONFIGS.PROJECT_CREATE);
+
     const newId = generateUUID();
     const now = new Date().toISOString();
     const safeDeadline = toSafeISODate(data.deadline);

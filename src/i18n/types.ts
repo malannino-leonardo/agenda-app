@@ -161,6 +161,8 @@ export interface Translations {
     needAccount: string;
     blobatarNotice: string;
     namePlaceholder: string;
+    rateLimitExceeded: string;
+    rateLimitCooldown: (seconds: number) => string;
   };
   legal: {
     privacyTitle: string;

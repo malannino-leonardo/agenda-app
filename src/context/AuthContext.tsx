@@ -2,6 +2,12 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { UserProfile } from '../types';
+import {
+  checkRateLimit,
+  recordRateLimitAttempt,
+  resetRateLimit,
+  RATE_LIMIT_CONFIGS,
+} from '../lib/rateLimit';
 
 interface AuthContextType {
   user: User | null;
@@ -157,9 +163,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Sign In with email & password
   const signIn = async (email: string, password: string): Promise<{ error: Error | null }> => {
+    const emailKey = email.trim().toLowerCase();
+    const rateLimitKey = `signin_${emailKey}`;
+
+    const check = checkRateLimit(rateLimitKey, RATE_LIMIT_CONFIGS.SIGN_IN);
+    if (!check.allowed) {
+      return {
+        error: new Error(
+          `Too many failed login attempts. For security, please wait ${check.retryAfterSeconds} second${
+            check.retryAfterSeconds === 1 ? '' : 's'
+          } before trying again.`
+        ),
+      };
+    }
+
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return { error };
+      if (error) {
+        const attempt = recordRateLimitAttempt(rateLimitKey, RATE_LIMIT_CONFIGS.SIGN_IN);
+        if (!attempt.allowed) {
+          return {
+            error: new Error(
+              `Too many failed login attempts. For security, please wait ${attempt.retryAfterSeconds} second${
+                attempt.retryAfterSeconds === 1 ? '' : 's'
+              } before trying again.`
+            ),
+          };
+        }
+        return { error };
+      }
+      resetRateLimit(rateLimitKey);
       if (data.user) {
         await fetchProfile(data.user.id, data.user.email ?? email, data.user.user_metadata?.full_name);
       }
@@ -167,6 +200,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { error: null };
     } else {
       // Local fallback
+      resetRateLimit(rateLimitKey);
       const demoUser = {
         id: 'local-' + Date.now(),
         email,
@@ -191,6 +225,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     password: string,
     fullName: string
   ): Promise<{ error: Error | null }> => {
+    const rateLimitKey = 'signup_global';
+    const check = checkRateLimit(rateLimitKey, RATE_LIMIT_CONFIGS.SIGN_UP);
+    if (!check.allowed) {
+      return {
+        error: new Error(
+          `Too many sign-up attempts. For security, please wait ${check.retryAfterSeconds} second${
+            check.retryAfterSeconds === 1 ? '' : 's'
+          } before trying again.`
+        ),
+      };
+    }
+
+    recordRateLimitAttempt(rateLimitKey, RATE_LIMIT_CONFIGS.SIGN_UP);
+
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -293,6 +341,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const trimmed = newEmail.trim();
     if (!user) return { error: new Error('User not authenticated') };
 
+    const rateLimitKey = `email_change_${user.id}`;
+    const check = checkRateLimit(rateLimitKey, RATE_LIMIT_CONFIGS.EMAIL_CHANGE);
+    if (!check.allowed) {
+      return {
+        error: new Error(
+          `Too many email change attempts. Please wait ${check.retryAfterSeconds} second${
+            check.retryAfterSeconds === 1 ? '' : 's'
+          } before trying again.`
+        ),
+      };
+    }
+    recordRateLimitAttempt(rateLimitKey, RATE_LIMIT_CONFIGS.EMAIL_CHANGE);
+
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.auth.updateUser({ email: trimmed });
       if (error) return { error };
@@ -317,6 +378,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   ): Promise<{ error: Error | null }> => {
     if (!user || !user.email) return { error: new Error('User not authenticated') };
 
+    const rateLimitKey = `pwd_change_${user.id}`;
+    const check = checkRateLimit(rateLimitKey, RATE_LIMIT_CONFIGS.PASSWORD_CHANGE);
+    if (!check.allowed) {
+      return {
+        error: new Error(
+          `Too many password change attempts. Please wait ${check.retryAfterSeconds} second${
+            check.retryAfterSeconds === 1 ? '' : 's'
+          } before trying again.`
+        ),
+      };
+    }
+
     if (isSupabaseConfigured && supabase) {
       // Re-authenticate user with current password to verify identity
       const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -325,8 +398,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (signInError) {
+        const attempt = recordRateLimitAttempt(rateLimitKey, RATE_LIMIT_CONFIGS.PASSWORD_CHANGE);
+        if (!attempt.allowed) {
+          return {
+            error: new Error(
+              `Too many failed attempts. For security, please wait ${attempt.retryAfterSeconds} second${
+                attempt.retryAfterSeconds === 1 ? '' : 's'
+              } before trying again.`
+            ),
+          };
+        }
         return { error: new Error('Current password verification failed. Please re-enter your password.') };
       }
+
+      resetRateLimit(rateLimitKey);
 
       // Update to new password
       const { error: updateError } = await supabase.auth.updateUser({
@@ -338,8 +423,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       // Local fallback check
       if (currentPassword.length < 4) {
+        const attempt = recordRateLimitAttempt(rateLimitKey, RATE_LIMIT_CONFIGS.PASSWORD_CHANGE);
+        if (!attempt.allowed) {
+          return {
+            error: new Error(
+              `Too many failed attempts. For security, please wait ${attempt.retryAfterSeconds} second${
+                attempt.retryAfterSeconds === 1 ? '' : 's'
+              } before trying again.`
+            ),
+          };
+        }
         return { error: new Error('Current password is incorrect.') };
       }
+      resetRateLimit(rateLimitKey);
       return { error: null };
     }
   };
@@ -347,6 +443,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Delete Account with cascading deletion
   const deleteAccount = async (): Promise<{ error: Error | null }> => {
     if (!user) return { error: new Error('User not authenticated') };
+
+    const rateLimitKey = `delete_account_${user.id}`;
+    const check = checkRateLimit(rateLimitKey, RATE_LIMIT_CONFIGS.ACCOUNT_DELETE);
+    if (!check.allowed) {
+      return {
+        error: new Error(
+          `Too many account deletion attempts. Please wait ${check.retryAfterSeconds} second${
+            check.retryAfterSeconds === 1 ? '' : 's'
+          } before trying again.`
+        ),
+      };
+    }
+    recordRateLimitAttempt(rateLimitKey, RATE_LIMIT_CONFIGS.ACCOUNT_DELETE);
 
     if (isSupabaseConfigured && supabase) {
       // Call secure security definer RPC

@@ -162,6 +162,8 @@ export const translations: Record<Language, Translations> = {
       needAccount: "Don't have an account? Create one",
       blobatarNotice: 'Your dynamic avatar is generated deterministically from your name using blobatar.dev',
       namePlaceholder: 'Your full name',
+      rateLimitExceeded: 'Too many requests. Please slow down and try again later.',
+      rateLimitCooldown: (seconds: number) => `Too many attempts. For security, please wait ${seconds} second${seconds === 1 ? '' : 's'} before trying again.`,
     },
     legal: {
       privacyTitle: 'Privacy Policy',
@@ -370,6 +372,8 @@ export const translations: Record<Language, Translations> = {
       needAccount: 'Non hai un account? Registrati',
       blobatarNotice: 'Il tuo avatar dinamico e generato in modo deterministico dal tuo nome.',
       namePlaceholder: 'Il tuo nome',
+      rateLimitExceeded: 'Troppe richieste. Rallenta e riprova più tardi.',
+      rateLimitCooldown: (seconds: number) => `Troppi tentativi. Per sicurezza, attendi ${seconds} second${seconds === 1 ? 'o' : 'i'} prima di riprovare.`,
     },
     legal: {
       privacyTitle: 'Informativa sulla Privacy',
