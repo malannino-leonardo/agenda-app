@@ -1,0 +1,74 @@
+@import "blobatar/motion.css";
+@import "blobatar/gaze.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-primary: #09090b;
+    --bg-secondary: #121215;
+    --bg-tertiary: #18181b;
+    --border-subtle: #27272a;
+    --border-muted: #1e1e24;
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent: #e4e4e7;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Refined selection highlight without AI gradients */
+  ::selection {
+    background-color: #3f3f46;
+    color: #ffffff;
+  }
+
+  /* Custom minimal scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #09090b;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #27272a;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3f3f46;
+  }
+}
+
+/* Subtle focus rings and clean inputs */
+input, select, textarea {
+  outline: none;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #52525b !important;
+}
+
+/* Card hover and interactive transitions */
+.interactive-card {
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.interactive-card:hover {
+  border-color: #3f3f46;
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.5);
+}
