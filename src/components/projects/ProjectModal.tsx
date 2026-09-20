@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, FolderKanban, Users, AlertCircle } from 'lucide-react';
 import { Project, ProjectStatus } from '../../types';
 import { useApp } from '../../context/AppContext';
@@ -84,8 +85,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/85 backdrop-blur-sm animate-fade-in">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-zinc-950/85 backdrop-blur-sm animate-fade-in">
       <div className="relative w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl p-6 flex flex-col space-y-5">
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-zinc-850 pb-3">
@@ -261,6 +262,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

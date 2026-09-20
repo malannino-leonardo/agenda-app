@@ -412,7 +412,7 @@ export const ProjectsModule: React.FC = () => {
 
                   {/* Tasks Drawer Accordion */}
                   {isExpanded && (
-                    <div className="mt-3 pt-3 border-t border-zinc-850 space-y-2.5 animate-fade-in">
+                    <div className="mt-3 space-y-2.5 animate-fade-in">
                       {/* Tasks List */}
                       {projectTasks.length > 0 ? (
                         <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
@@ -421,7 +421,11 @@ export const ProjectsModule: React.FC = () => {
                             return (
                               <div
                                 key={t.id}
-                                className="flex items-center justify-between p-2 rounded bg-zinc-950/80 border border-zinc-850/80 text-xs font-mono hover:border-zinc-700 transition-colors group/task"
+                                className={`flex items-center justify-between p-2 rounded text-xs font-mono transition-all group/task ${
+                                  isDone
+                                    ? 'bg-zinc-950/40 border border-zinc-800/60 opacity-60'
+                                    : 'bg-zinc-950/70 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-900/60'
+                                }`}
                               >
                                 <div className="flex items-center gap-2.5 min-w-0">
                                   <button

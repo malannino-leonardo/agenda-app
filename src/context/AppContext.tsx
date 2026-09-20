@@ -57,6 +57,30 @@ const getModuleFromPath = (path: string): NavigationModule => {
   return '404';
 };
 
+const generateUUID = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
+const toSafeISODate = (val?: string | null): string | null => {
+  if (!val || !val.trim()) return null;
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+};
+
+const toValidUUIDOrNull = (val?: string | null): string | null => {
+  if (!val || !val.trim()) return null;
+  const trimmed = val.trim();
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(trimmed) ? trimmed : null;
+};
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -171,17 +195,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         })
         .eq('id', taskId)
         .eq('user_id', user.id)
-        .then(() => {});
+        .then(({ error }) => {
+          if (error) console.error('Supabase tasks toggle completion error:', error);
+        });
     }
   };
 
   // Add Task
   const addTask = (data: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => {
-    const newId = 'tsk-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7);
+    const newId = generateUUID();
     const now = new Date().toISOString();
+    const safeDueDate = toSafeISODate(data.due_date);
     const newTask: Task = {
       ...data,
       id: newId,
+      due_date: safeDueDate || undefined,
       user_id: user?.id,
       created_at: now,
       updated_at: now,
@@ -191,22 +219,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTasks((prev) => [newTask, ...prev]);
 
     if (isSupabaseConfigured && supabase && user) {
+      const dbScope = (data.scope === 'projects' ? 'freelance' : data.scope) || 'agenda';
       supabase
         .from('tasks')
         .insert({
           id: newId,
           user_id: user.id,
-          parent_id: data.parent_id || null,
-          scope: data.scope,
-          project_id: data.project_id || null,
+          parent_id: toValidUUIDOrNull(data.parent_id),
+          scope: dbScope,
+          project_id: toValidUUIDOrNull(data.project_id),
           title: data.title,
           description: data.description || null,
-          status: data.status,
-          priority: data.priority,
-          due_date: data.due_date ? new Date(data.due_date).toISOString() : null,
+          status: data.status || 'pending',
+          priority: data.priority || 'medium',
+          due_date: safeDueDate,
           order_index: data.order_index || 0,
         })
-        .then(() => {});
+        .then(({ error }) => {
+          if (error) console.error('Supabase tasks insert error:', error);
+        });
     }
   };
 
@@ -232,15 +263,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     if (isSupabaseConfigured && supabase && user) {
+      const dbUpdates: Record<string, unknown> = {
+        ...updates,
+        updated_at: now,
+      };
+      if (dbUpdates.scope === 'projects') {
+        dbUpdates.scope = 'freelance';
+      }
+      if ('parent_id' in dbUpdates) {
+        dbUpdates.parent_id = toValidUUIDOrNull(dbUpdates.parent_id as string);
+      }
+      if ('project_id' in dbUpdates) {
+        dbUpdates.project_id = toValidUUIDOrNull(dbUpdates.project_id as string);
+      }
+      if ('due_date' in dbUpdates) {
+        dbUpdates.due_date = toSafeISODate(dbUpdates.due_date as string);
+      }
+
       supabase
         .from('tasks')
-        .update({
-          ...updates,
-          updated_at: now,
-        })
+        .update(dbUpdates)
         .eq('id', taskId)
         .eq('user_id', user.id)
-        .then(() => {});
+        .then(({ error }) => {
+          if (error) console.error('Supabase tasks update error:', error);
+        });
     }
   };
 
@@ -254,13 +301,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .delete()
         .eq('id', taskId)
         .eq('user_id', user.id)
-        .then(() => {});
+        .then(({ error }) => {
+          if (error) console.error('Supabase tasks delete error:', error);
+        });
     }
   };
 
   // Client Operations
   const addClient = (data: Omit<Client, 'id' | 'created_at' | 'updated_at'>) => {
-    const newId = 'cli-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7);
+    const newId = generateUUID();
     const now = new Date().toISOString();
     const newClient: Client = {
       ...data,
@@ -282,11 +331,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           company: data.company || null,
           email: data.email || null,
           phone: data.phone || null,
-          hourly_rate: data.hourly_rate || 0,
+          hourly_rate: Number(data.hourly_rate) || 0,
           currency: data.currency || 'EUR',
           notes: data.notes || null,
         })
-        .then(() => {});
+        .then(({ error }) => {
+          if (error) console.error('Supabase clients insert error:', error);
+        });
     }
   };
 
@@ -297,12 +348,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     if (isSupabaseConfigured && supabase && user) {
+      const dbUpdates: Record<string, unknown> = {
+        ...updates,
+        updated_at: now,
+      };
+      if ('hourly_rate' in dbUpdates && dbUpdates.hourly_rate !== undefined) {
+        dbUpdates.hourly_rate = Number(dbUpdates.hourly_rate) || 0;
+      }
+
       supabase
         .from('clients')
-        .update({ ...updates, updated_at: now })
+        .update(dbUpdates)
         .eq('id', id)
         .eq('user_id', user.id)
-        .then(() => {});
+        .then(({ error }) => {
+          if (error) console.error('Supabase clients update error:', error);
+        });
     }
   };
 
@@ -318,17 +379,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .delete()
         .eq('id', id)
         .eq('user_id', user.id)
-        .then(() => {});
+        .then(({ error }) => {
+          if (error) console.error('Supabase clients delete error:', error);
+        });
     }
   };
 
   // Project Operations
   const addProject = (data: Omit<Project, 'id' | 'created_at' | 'updated_at'>) => {
-    const newId = 'proj-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7);
+    const newId = generateUUID();
     const now = new Date().toISOString();
+    const safeDeadline = toSafeISODate(data.deadline);
     const newProject: Project = {
       ...data,
       id: newId,
+      deadline: safeDeadline || undefined,
       user_id: user?.id,
       created_at: now,
       updated_at: now,
@@ -342,16 +407,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .insert({
           id: newId,
           user_id: user.id,
-          client_id: data.client_id || null,
+          client_id: toValidUUIDOrNull(data.client_id),
           title: data.title,
           description: data.description || null,
-          budget: data.budget || 0,
-          quoted_price: data.quoted_price || 0,
-          invoiced_amount: data.invoiced_amount || 0,
-          status: data.status,
-          deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
+          budget: Number(data.budget) || 0,
+          quoted_price: Number(data.quoted_price) || 0,
+          invoiced_amount: Number(data.invoiced_amount) || 0,
+          status: data.status || 'pending',
+          deadline: safeDeadline,
         })
-        .then(() => {});
+        .then(({ error }) => {
+          if (error) console.error('Supabase projects insert error:', error);
+        });
     }
   };
 
@@ -362,12 +429,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     if (isSupabaseConfigured && supabase && user) {
+      const dbUpdates: Record<string, unknown> = {
+        ...updates,
+        updated_at: now,
+      };
+      if ('client_id' in dbUpdates) {
+        dbUpdates.client_id = toValidUUIDOrNull(dbUpdates.client_id as string);
+      }
+      if ('deadline' in dbUpdates) {
+        dbUpdates.deadline = toSafeISODate(dbUpdates.deadline as string);
+      }
+      if ('budget' in dbUpdates && dbUpdates.budget !== undefined) {
+        dbUpdates.budget = Number(dbUpdates.budget) || 0;
+      }
+      if ('quoted_price' in dbUpdates && dbUpdates.quoted_price !== undefined) {
+        dbUpdates.quoted_price = Number(dbUpdates.quoted_price) || 0;
+      }
+      if ('invoiced_amount' in dbUpdates && dbUpdates.invoiced_amount !== undefined) {
+        dbUpdates.invoiced_amount = Number(dbUpdates.invoiced_amount) || 0;
+      }
+
       supabase
         .from('projects')
-        .update({ ...updates, updated_at: now })
+        .update(dbUpdates)
         .eq('id', id)
         .eq('user_id', user.id)
-        .then(() => {});
+        .then(({ error }) => {
+          if (error) console.error('Supabase projects update error:', error);
+        });
     }
   };
 
@@ -381,7 +470,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .delete()
         .eq('id', id)
         .eq('user_id', user.id)
-        .then(() => {});
+        .then(({ error }) => {
+          if (error) console.error('Supabase projects delete error:', error);
+        });
     }
   };
 
@@ -390,7 +481,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let filtered = tasks;
 
     if (scope) {
-      filtered = filtered.filter((t) => t.scope === scope);
+      filtered = filtered.filter((t) =>
+        scope === 'projects' || scope === 'freelance'
+          ? t.scope === 'projects' || t.scope === 'freelance'
+          : t.scope === scope
+      );
     }
     if (projectId) {
       filtered = filtered.filter((t) => t.project_id === projectId);

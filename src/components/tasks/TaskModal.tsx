@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { TaskScope, TaskPriority, TaskStatus } from '../../types';
 import { useApp } from '../../context/AppContext';
@@ -53,7 +54,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       title: title.trim(),
       description: description.trim() || undefined,
       scope,
-      project_id: scope === 'freelance' ? projectId : null,
+      project_id: scope === 'freelance' || scope === 'projects' ? projectId : null,
       parent_id: parentId || null,
       priority,
       status,
@@ -65,8 +66,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
       <div className="w-full max-w-lg bg-zinc-950 border border-zinc-800 rounded-lg shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
@@ -136,7 +137,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 {t.freelance.projects}
               </label>
               <select
-                disabled={scope !== 'freelance'}
+                disabled={scope !== 'freelance' && scope !== 'projects'}
                 value={projectId || ''}
                 onChange={(e) => setProjectId(e.target.value || null)}
                 className="w-full px-3 py-2 text-xs bg-zinc-900 border border-zinc-800 rounded text-zinc-200 focus:border-zinc-500 transition-colors disabled:opacity-40"
@@ -233,6 +234,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

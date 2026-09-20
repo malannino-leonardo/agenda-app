@@ -503,7 +503,7 @@ export const DailyAgendaModule: React.FC = () => {
                   key={dateKey}
                   onClick={() => {
                     setCurrentDate(date);
-                    setViewMode('day');
+                    handleOpenNewTask(dateKey);
                   }}
                   className={`min-h-[96px] p-2 rounded border flex flex-col justify-between cursor-pointer transition-all ${
                     isToday

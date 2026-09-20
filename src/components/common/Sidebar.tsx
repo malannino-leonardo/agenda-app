@@ -4,26 +4,19 @@ import {
   Calendar,
   FolderKanban,
   Users,
-  Settings,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useTranslation } from '../../context/LanguageContext';
-import { useAuth } from '../../context/AuthContext';
 import { NavigationModule } from '../../types';
-import { BlobatarAvatar } from './BlobatarAvatar';
 
 export const Sidebar: React.FC = () => {
   const { activeModule, setActiveModule, tasks, projects, clients } = useApp();
-  const { user, profile } = useAuth();
   const { t } = useTranslation();
 
   const pendingTasksCount = tasks.filter((t) => t.status !== 'completed').length;
   const pendingAgendaCount = tasks.filter(
     (t) => t.due_date && t.status !== 'completed'
   ).length;
-
-  const userSeed = profile?.full_name?.trim() || user?.email?.split('@')[0] || 'User';
-  const fullName = profile?.full_name?.trim() || user?.email?.split('@')[0] || 'User';
 
   const primaryNavItems: {
     id: NavigationModule;
@@ -121,35 +114,8 @@ export const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      {/* Bottom Section: Account Button & Legal Links */}
+      {/* Bottom Section: Legal Links & Status */}
       <div className="mt-auto pt-4 space-y-4">
-        {/* Pinned Account Button in the bottom part */}
-        {user && (
-          <div className="pt-2 border-t border-zinc-800/80">
-            <button
-              type="button"
-              onClick={() => setActiveModule('account')}
-              className={`w-full flex items-center justify-between p-2.5 rounded-lg border transition-all duration-150 group ${
-                activeModule === 'account'
-                  ? 'bg-zinc-900 border-zinc-700 text-zinc-100 shadow-sm'
-                  : 'bg-zinc-950 border-zinc-800 hover:border-zinc-600 hover:bg-zinc-900/70 text-zinc-400 hover:text-zinc-100'
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <BlobatarAvatar name={userSeed} size={32} />
-                <div className="text-left min-w-0">
-                  <p className="text-xs font-medium text-zinc-200 group-hover:text-white truncate">
-                    {fullName}
-                  </p>
-                  <p className="text-[10px] font-mono text-zinc-500 truncate">
-                    {t.nav.account}
-                  </p>
-                </div>
-              </div>
-              <Settings className="w-3.5 h-3.5 text-zinc-500 group-hover:text-zinc-300 transition-colors shrink-0" />
-            </button>
-          </div>
-        )}
 
         {/* Footer Links & Status */}
         <div className="px-2 space-y-2 border-t border-zinc-900 pt-3">
