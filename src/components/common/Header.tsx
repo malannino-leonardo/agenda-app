@@ -7,6 +7,7 @@ import {
   Settings,
   LogOut,
   ChevronDown,
+  Mail,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useTranslation } from '../../context/LanguageContext';
@@ -18,7 +19,17 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onOpenNewTask }) => {
-  const { searchQuery, setSearchQuery, setActiveModule, navigateToHome, activeModule, tasks } = useApp();
+  const {
+    searchQuery,
+    setSearchQuery,
+    setActiveModule,
+    navigateToHome,
+    activeModule,
+    tasks,
+    guestEmail,
+    setGuestEmail,
+    openGuestAccess,
+  } = useApp();
   const { language, setLanguage, t } = useTranslation();
   const { user, profile, openSignIn, signOut } = useAuth();
 
@@ -55,24 +66,24 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewTask }) => {
   }, [isDropdownOpen]);
 
   return (
-    <header className="sticky top-0 z-30 h-14 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-850 px-4 md:px-8 flex items-center justify-between gap-4">
-      {/* Brand title & dynamic section breadcrumb */}
+    <header className="sticky top-0 z-30 h-14 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-850 px-3 sm:px-6 md:px-8 flex items-center justify-between gap-2 sm:gap-4">
+      {/* Brand title & dynamic section breadcrumb (breadcrumb hidden on mobile for clean fit) */}
       <div
         onClick={navigateToHome}
-        className="flex items-center gap-3 cursor-pointer select-none group"
+        className="flex items-center gap-2 sm:gap-3 cursor-pointer select-none group shrink-0"
       >
-        <span className="font-mono text-sm font-bold tracking-widest text-zinc-100 group-hover:text-white uppercase transition-colors">
+        <span className="font-mono text-xs sm:text-sm font-bold tracking-widest text-zinc-100 group-hover:text-white uppercase transition-colors">
           {t.common.appTitle}
         </span>
-        <span className="text-zinc-700 text-xs">/</span>
-        <span className="text-xs font-mono text-zinc-400 group-hover:text-zinc-200 tracking-wider uppercase font-medium transition-colors">
+        <span className="text-zinc-700 text-xs hidden sm:inline">/</span>
+        <span className="text-xs font-mono text-zinc-400 group-hover:text-zinc-200 tracking-wider uppercase font-medium transition-colors hidden sm:inline truncate max-w-[150px]">
           {sectionTitle}
         </span>
       </div>
 
-      {/* Global Search (visible strictly for authenticated users) */}
+      {/* Global Search (hidden on mobile, visible on tablet & desktop) */}
       {user ? (
-        <div className="flex-1 max-w-md mx-2 sm:mx-6">
+        <div className="hidden sm:block flex-1 max-w-xs md:max-w-md mx-2 sm:mx-4">
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
             <input
@@ -89,13 +100,14 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewTask }) => {
       )}
 
       {/* Action group */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+
         {/* Language Switcher */}
-        <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded p-0.5 text-xs font-mono">
+        <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded p-0.5 text-[11px] sm:text-xs font-mono">
           <button
             type="button"
             onClick={() => setLanguage('en')}
-            className={`px-2 py-0.5 rounded transition-colors ${
+            className={`px-1.5 sm:px-2 py-0.5 rounded transition-colors ${
               language === 'en'
                 ? 'bg-zinc-800 text-zinc-100 font-semibold'
                 : 'text-zinc-500 hover:text-zinc-300'
@@ -106,7 +118,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewTask }) => {
           <button
             type="button"
             onClick={() => setLanguage('it')}
-            className={`px-2 py-0.5 rounded transition-colors ${
+            className={`px-1.5 sm:px-2 py-0.5 rounded transition-colors ${
               language === 'it'
                 ? 'bg-zinc-800 text-zinc-100 font-semibold'
                 : 'text-zinc-500 hover:text-zinc-300'
@@ -121,10 +133,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewTask }) => {
           <button
             type="button"
             onClick={onOpenNewTask}
-            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-mono uppercase tracking-wider bg-zinc-100 hover:bg-zinc-300 text-zinc-950 font-medium rounded transition-colors"
+            className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs font-mono uppercase tracking-wider bg-zinc-100 hover:bg-zinc-300 text-zinc-950 font-semibold rounded transition-colors"
           >
             <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span className="hidden sm:inline">{t.tasks.newTask}</span>
+            <span className="hidden md:inline">{t.tasks.newTask}</span>
           </button>
         )}
 
@@ -203,14 +215,41 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewTask }) => {
             )}
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={openSignIn}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono text-zinc-300 hover:text-zinc-100 border border-zinc-800 hover:border-zinc-700 bg-zinc-900 rounded transition-colors"
-          >
-            <LogIn className="w-3.5 h-3.5" />
-            <span>{t.account.signIn}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {guestEmail ? (
+              <div className="flex items-center gap-1.5 text-xs font-mono">
+                <span className="text-zinc-400 hidden sm:inline">Guest:</span>
+                <span className="text-zinc-200 font-semibold max-w-[110px] truncate" title={guestEmail}>
+                  {guestEmail}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setGuestEmail(null)}
+                  className="px-2 py-0.5 text-[10px] font-mono text-zinc-400 hover:text-zinc-200 border border-zinc-800 rounded transition-colors"
+                >
+                  Exit
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={openGuestAccess}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-700 bg-zinc-900/60 rounded transition-colors"
+              >
+                <Mail className="w-3.5 h-3.5 text-zinc-400" />
+                <span className="hidden sm:inline">Shared Calendar</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={openSignIn}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono text-zinc-300 hover:text-zinc-100 border border-zinc-800 hover:border-zinc-700 bg-zinc-900 rounded transition-colors"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>{t.account.signIn}</span>
+            </button>
+          </div>
         )}
       </div>
     </header>

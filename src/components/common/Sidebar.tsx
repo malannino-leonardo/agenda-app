@@ -66,14 +66,14 @@ export const Sidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="w-64 shrink-0 border-r border-zinc-850 bg-zinc-950 p-4 hidden md:flex md:flex-col justify-between min-h-[calc(100vh-3.5rem)] select-none">
+    <aside className="w-64 shrink-0 border-r border-zinc-850 bg-zinc-950 p-3 sm:p-3.5 hidden md:flex md:flex-col justify-between h-full overflow-hidden select-none">
       {/* Top Workspace Navigation */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div>
-          <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest px-3 mb-3">
+          <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest px-3 mb-2.5">
             {t.common.overview}
           </div>
-          <nav className="space-y-1.5">
+          <nav className="space-y-1">
             {primaryNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeModule === item.id;
@@ -115,10 +115,8 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Bottom Section: Legal Links & Status */}
-      <div className="mt-auto pt-4 space-y-4">
-
-        {/* Footer Links & Status */}
-        <div className="px-2 space-y-2 border-t border-zinc-900 pt-3">
+      <div className="mt-auto pt-3 space-y-2 shrink-0 border-t border-zinc-900">
+        <div className="px-2 space-y-2">
           <div className="flex items-center gap-3 text-[11px] font-mono text-zinc-600">
             <button
               type="button"

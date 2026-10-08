@@ -164,6 +164,26 @@ export interface Translations {
     rateLimitExceeded: string;
     rateLimitCooldown: (seconds: number) => string;
   };
+  appearance: {
+    title: string;
+    subtitle: string;
+    themeTitle: string;
+    themeDark: string;
+    themeDarkDesc: string;
+    themeLight: string;
+    themeLightDesc: string;
+    uiScaleTitle: string;
+    uiScaleSubtitle: string;
+    scaleDefault: string;
+    scaleReset: string;
+    scaleCompact: string;
+    scaleComfortable: string;
+    scaleLarge: string;
+    scaleExtraLarge: string;
+    currentScale: string;
+    zoomIn: string;
+    zoomOut: string;
+  };
   legal: {
     privacyTitle: string;
     privacySubtitle: string;

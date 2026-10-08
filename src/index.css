@@ -21,7 +21,7 @@
   body {
     margin: 0;
     padding: 0;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     background-color: var(--bg-primary);
     color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
@@ -54,6 +54,486 @@
   }
 }
 
+/* =========================================================================
+   LIGHT THEME OVERHAUL: Crisp, high-contrast, fully legible modern aesthetic
+   ========================================================================= */
+
+html.light {
+  --bg-primary: #f4f4f5;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #fafafa;
+  --border-subtle: #e4e4e7;
+  --border-muted: #d4d4d8;
+  --text-primary: #09090b;
+  --text-secondary: #27272a;
+  --text-muted: #52525b;
+  --accent: #18181b;
+}
+
+/* Page canvas */
+html.light body,
+html.light #root,
+html.light .h-screen.bg-zinc-950 {
+  background-color: #f4f4f5 !important;
+  color: #09090b !important;
+}
+
+html.light ::selection {
+  background-color: #e4e4e7;
+  color: #09090b;
+}
+
+/* Top Header & Left Sidebar */
+html.light header,
+html.light header.sticky {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-bottom-color: #e4e4e7 !important;
+}
+
+html.light aside,
+html.light aside.shrink-0 {
+  background-color: #ffffff !important;
+  border-right-color: #e4e4e7 !important;
+}
+
+/* Cards & Content Panels */
+html.light .bg-zinc-900\/95,
+html.light .bg-zinc-900\/90,
+html.light .bg-zinc-900\/85,
+html.light .bg-zinc-900\/80,
+html.light .bg-zinc-900\/75,
+html.light .bg-zinc-900\/70,
+html.light .bg-zinc-900\/60,
+html.light .bg-zinc-900\/50,
+html.light .bg-zinc-900\/40 {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* Subtle secondary containers & Segmented control bars */
+html.light .bg-zinc-900,
+html.light .bg-zinc-900\/30,
+html.light .bg-zinc-900\/20 {
+  background-color: #f4f4f5 !important;
+  border-color: #e4e4e7 !important;
+}
+
+html.light .bg-zinc-850 {
+  background-color: #f4f4f5 !important;
+  border-color: #e4e4e7 !important;
+}
+
+/* Secondary Action Buttons (e.g. Sign Out, modal dismissals) */
+html.light button.bg-zinc-950,
+html.light button.bg-zinc-900,
+html.light button.bg-zinc-850 {
+  background-color: #ffffff !important;
+  color: #09090b !important;
+  border: 1px solid #d4d4d8 !important;
+}
+
+html.light button.bg-zinc-950:hover,
+html.light button.bg-zinc-900:hover,
+html.light button.bg-zinc-850:hover {
+  background-color: #f4f4f5 !important;
+  color: #09090b !important;
+  border-color: #a1a1aa !important;
+}
+
+/* Modals & Dialogs */
+html.light div.bg-zinc-950 {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+
+html.light .bg-zinc-950\/85,
+html.light .bg-zinc-950\/80 {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Sub-panels, list rows & chips */
+html.light .bg-zinc-950\/70,
+html.light .bg-zinc-950\/60 {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+
+html.light .bg-zinc-950\/40 {
+  background-color: #f4f4f5 !important;
+  border-color: #e4e4e7 !important;
+}
+
+/* Active Segmented Control Tabs (Calendar Views, Filters) */
+html.light button.bg-zinc-800 {
+  background-color: #ffffff !important;
+  color: #09090b !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Crisp Light Borders Across All Utilities */
+html.light .border-zinc-900,
+html.light .border-zinc-900\/80,
+html.light .border-zinc-900\/60,
+html.light .border-zinc-850,
+html.light .border-zinc-800,
+html.light .border-zinc-800\/80,
+html.light .border-zinc-800\/60,
+html.light .border-zinc-700,
+html.light .border-zinc-700\/60 {
+  border-color: #e4e4e7 !important;
+}
+
+/* High-Contrast Typography */
+html.light .text-zinc-100,
+html.light .text-zinc-200,
+html.light .text-white,
+html.light h1,
+html.light h2,
+html.light h3,
+html.light h4 {
+  color: #09090b !important;
+}
+
+html.light .text-zinc-300,
+html.light .text-zinc-400 {
+  color: #27272a !important;
+}
+
+html.light .text-zinc-500 {
+  color: #52525b !important;
+}
+
+html.light .text-zinc-600 {
+  color: #71717a !important;
+}
+
+html.light .text-zinc-700 {
+  color: #a1a1aa !important;
+}
+
+/* Form Controls (Inputs, Selects, Textareas) */
+html.light input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html.light select,
+html.light textarea {
+  background-color: #ffffff !important;
+  color: #09090b !important;
+  border: 1px solid #d4d4d8 !important;
+}
+
+html.light input:focus,
+html.light select:focus,
+html.light textarea:focus {
+  border-color: #18181b !important;
+  box-shadow: 0 0 0 1px #18181b !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #71717a !important;
+}
+
+/* Primary Action Buttons (Dark Charcoal with White Text) */
+html.light .bg-zinc-100 {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+  border-color: #18181b !important;
+}
+
+html.light .bg-zinc-100:hover,
+html.light .hover\:bg-zinc-300:hover {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+html.light .text-zinc-950 {
+  color: #ffffff !important;
+}
+
+/* Normalized Light Hover States (Eliminates Dark Flashes) */
+html.light .hover\:bg-zinc-950:hover,
+html.light .hover\:bg-zinc-900:hover,
+html.light .hover\:bg-zinc-900\/80:hover,
+html.light .hover\:bg-zinc-900\/70:hover,
+html.light .hover\:bg-zinc-900\/60:hover,
+html.light .hover\:bg-zinc-900\/50:hover,
+html.light .hover\:bg-zinc-900\/40:hover,
+html.light .hover\:bg-zinc-850:hover,
+html.light .hover\:bg-zinc-800:hover,
+html.light .hover\:bg-zinc-800\/80:hover,
+html.light .hover\:bg-zinc-700:hover {
+  background-color: #f4f4f5 !important;
+}
+
+html.light .hover\:text-zinc-100:hover,
+html.light .hover\:text-zinc-200:hover,
+html.light .hover\:text-zinc-300:hover,
+html.light .hover\:text-white:hover {
+  color: #09090b !important;
+}
+
+html.light .hover\:border-zinc-700:hover,
+html.light .hover\:border-zinc-600:hover,
+html.light .hover\:border-zinc-500:hover {
+  border-color: #a1a1aa !important;
+}
+
+/* =========================================================================
+   TASK CHECKBOXES (Consistent, high-contrast in Light and Dark modes)
+   ========================================================================= */
+
+.task-checkbox {
+  transition: all 0.15s ease-in-out;
+}
+
+/* Light Mode: Unchecked Checkbox */
+html.light .task-checkbox:not(.is-completed) {
+  background-color: #ffffff !important;
+  border: 1.5px solid #a1a1aa !important;
+  color: transparent !important;
+}
+
+html.light .task-checkbox:not(.is-completed):hover {
+  background-color: #f4f4f5 !important;
+  border-color: #18181b !important;
+  color: #71717a !important;
+}
+
+html.light .task-checkbox:not(.is-completed) svg {
+  color: #71717a !important;
+  stroke: #71717a !important;
+}
+
+/* Light Mode: Completed Checkbox */
+html.light .task-checkbox.is-completed {
+  background-color: #18181b !important;
+  border: 1.5px solid #18181b !important;
+  color: #ffffff !important;
+}
+
+html.light .task-checkbox.is-completed:hover {
+  background-color: #27272a !important;
+  border-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+html.light .task-checkbox.is-completed svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+/* Dark Mode: Unchecked Checkbox */
+html.dark .task-checkbox:not(.is-completed),
+:root:not(.light) .task-checkbox:not(.is-completed) {
+  background-color: rgba(24, 24, 27, 0.8) !important;
+  border: 1px solid #3f3f46 !important;
+  color: transparent !important;
+}
+
+html.dark .task-checkbox:not(.is-completed):hover,
+:root:not(.light) .task-checkbox:not(.is-completed):hover {
+  border-color: #71717a !important;
+  color: #a1a1aa !important;
+}
+
+html.dark .task-checkbox:not(.is-completed) svg,
+:root:not(.light) .task-checkbox:not(.is-completed) svg {
+  color: #a1a1aa !important;
+  stroke: #a1a1aa !important;
+}
+
+/* Dark Mode: Completed Checkbox */
+html.dark .task-checkbox.is-completed,
+:root:not(.light) .task-checkbox.is-completed {
+  background-color: #f4f4f5 !important;
+  border: 1px solid #f4f4f5 !important;
+  color: #09090b !important;
+}
+
+html.dark .task-checkbox.is-completed:hover,
+:root:not(.light) .task-checkbox.is-completed:hover {
+  background-color: #e4e4e7 !important;
+  border-color: #e4e4e7 !important;
+  color: #09090b !important;
+}
+
+html.dark .task-checkbox.is-completed svg,
+:root:not(.light) .task-checkbox.is-completed svg {
+  color: #09090b !important;
+  stroke: #09090b !important;
+}
+
+/* Fallback for elements with border-zinc-100 in light mode */
+html.light .border-zinc-100 {
+  border-color: #18181b !important;
+}
+
+/* =========================================================================
+   Semantic & Status Color Tuning in Light Mode (Rich, High-Contrast)
+   ========================================================================= */
+
+/* Emerald / Completed / Synced */
+html.light .text-emerald-400,
+html.light .text-emerald-500 {
+  color: #047857 !important;
+}
+html.light .text-emerald-300,
+html.light .text-emerald-200,
+html.light .text-emerald-100 {
+  color: #065f46 !important;
+}
+html.light .bg-emerald-950\/30,
+html.light .bg-emerald-950\/20,
+html.light .bg-emerald-950\/40,
+html.light .bg-emerald-950\/50,
+html.light .bg-emerald-950 {
+  background-color: #ecfdf5 !important;
+  color: #065f46 !important;
+}
+html.light .border-emerald-500,
+html.light .border-emerald-500\/50,
+html.light .border-emerald-500\/40,
+html.light .border-emerald-500\/30 {
+  border-color: #a7f3d0 !important;
+}
+
+/* Amber / In-Progress / Medium Priority */
+html.light .text-amber-400,
+html.light .text-amber-500 {
+  color: #b45309 !important;
+}
+html.light .text-amber-300,
+html.light .text-amber-200,
+html.light .text-amber-100 {
+  color: #92400e !important;
+}
+html.light .bg-amber-950\/30,
+html.light .bg-amber-950\/20,
+html.light .bg-amber-950\/40,
+html.light .bg-amber-950\/50,
+html.light .bg-amber-950 {
+  background-color: #fffbeb !important;
+  color: #92400e !important;
+}
+html.light .border-amber-500,
+html.light .border-amber-500\/50,
+html.light .border-amber-500\/40,
+html.light .border-amber-500\/30 {
+  border-color: #fde68a !important;
+}
+
+/* Indigo / Workspace Primary / Agenda */
+html.light .text-indigo-400,
+html.light .text-indigo-500 {
+  color: #4338ca !important;
+}
+html.light .text-indigo-300,
+html.light .text-indigo-200,
+html.light .text-indigo-100 {
+  color: #3730a3 !important;
+}
+html.light .bg-indigo-950\/30,
+html.light .bg-indigo-950\/20,
+html.light .bg-indigo-950\/40,
+html.light .bg-indigo-950\/50,
+html.light .bg-indigo-950 {
+  background-color: #eef2ff !important;
+  color: #3730a3 !important;
+}
+html.light .border-indigo-500,
+html.light .border-indigo-500\/80,
+html.light .border-indigo-500\/60,
+html.light .border-indigo-500\/50,
+html.light .border-indigo-500\/40,
+html.light .border-indigo-500\/30 {
+  border-color: #c7d2fe !important;
+}
+
+/* Sky / Clients / Secondary Navigation */
+html.light .text-sky-400,
+html.light .text-sky-500 {
+  color: #0369a1 !important;
+}
+html.light .text-sky-300,
+html.light .text-sky-200,
+html.light .text-sky-100 {
+  color: #075985 !important;
+}
+html.light .bg-sky-950\/30,
+html.light .bg-sky-950\/20,
+html.light .bg-sky-950\/40,
+html.light .bg-sky-950\/50,
+html.light .bg-sky-950 {
+  background-color: #f0f9ff !important;
+  color: #075985 !important;
+}
+html.light .border-sky-500,
+html.light .border-sky-500\/50,
+html.light .border-sky-500\/40,
+html.light .border-sky-500\/30 {
+  border-color: #bae6fd !important;
+}
+
+/* Rose / Danger / High Priority */
+html.light .text-rose-400,
+html.light .text-red-400,
+html.light .text-rose-500,
+html.light .text-red-500 {
+  color: #b91c1c !important;
+}
+html.light .text-rose-300,
+html.light .text-red-300,
+html.light .text-rose-200,
+html.light .text-rose-100,
+html.light .text-red-100 {
+  color: #991b1b !important;
+}
+html.light .bg-rose-950\/30,
+html.light .bg-red-950\/30,
+html.light .bg-rose-950\/20,
+html.light .bg-red-950\/20,
+html.light .bg-rose-950,
+html.light .bg-red-950 {
+  background-color: #fef2f2 !important;
+  color: #991b1b !important;
+}
+html.light .border-rose-500,
+html.light .border-red-500,
+html.light .border-rose-500\/50,
+html.light .border-red-500\/50,
+html.light .border-rose-500\/30,
+html.light .border-red-500\/30 {
+  border-color: #fecaca !important;
+}
+
+/* Calendar Grid Cells in Light Mode */
+html.light .grid.bg-zinc-950 {
+  background-color: #e4e4e7 !important;
+  border: 1px solid #e4e4e7 !important;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+html.light .bg-zinc-850\/80 {
+  background-color: #f4f4f5 !important;
+  color: #18181b !important;
+  border: 1px solid #e4e4e7 !important;
+}
+
+/* Scrollbars in Light Mode */
+html.light ::-webkit-scrollbar-track {
+  background: #f4f4f5;
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 3px;
+}
+
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: #a1a1aa;
+}
+
 /* Subtle focus rings and clean inputs */
 input, select, textarea {
   outline: none;
@@ -72,3 +552,88 @@ input:focus, select:focus, textarea:focus {
   border-color: #3f3f46;
   box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.5);
 }
+
+/* Minimalist Range Slider Styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer;
+  height: 24px;
+}
+
+input[type="range"]:focus {
+  border: none !important;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  background-color: #27272a;
+  height: 6px;
+  border-radius: 9999px;
+  border: 1px solid #3f3f46;
+}
+
+input[type="range"]::-moz-range-track {
+  background-color: #27272a;
+  height: 6px;
+  border-radius: 9999px;
+  border: 1px solid #3f3f46;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -6px;
+  background-color: #fafafa;
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  border: 2px solid #09090b;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.1s ease, background-color 0.1s ease;
+}
+
+input[type="range"]::-moz-range-thumb {
+  background-color: #fafafa;
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  border: 2px solid #09090b;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.1s ease, background-color 0.1s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  background-color: #ffffff;
+}
+
+input[type="range"]::-moz-range-thumb:hover {
+  transform: scale(1.15);
+  background-color: #ffffff;
+}
+
+html.light input[type="range"]::-webkit-slider-runnable-track {
+  background-color: #e4e4e7;
+  border-color: #d4d4d8;
+}
+
+html.light input[type="range"]::-moz-range-track {
+  background-color: #e4e4e7;
+  border-color: #d4d4d8;
+}
+
+html.light input[type="range"]::-webkit-slider-thumb {
+  background-color: #18181b;
+  border-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+html.light input[type="range"]::-moz-range-thumb {
+  background-color: #18181b;
+  border-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+

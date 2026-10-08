@@ -191,6 +191,7 @@ export const ClientsModule: React.FC = () => {
 
       {/* Client Modal */}
       <ClientModal
+        key={editingClient ? editingClient.id : 'new'}
         isOpen={isClientModalOpen}
         onClose={() => {
           setIsClientModalOpen(false);

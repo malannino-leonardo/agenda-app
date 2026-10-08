@@ -8,12 +8,14 @@ interface TaskListProps {
   pendingTasks: Task[];
   completedTasks: Task[];
   onAddSubtask?: (parentId: string) => void;
+  onEditTask?: (task: Task) => void;
 }
 
 export const TaskList: React.FC<TaskListProps> = ({
   pendingTasks,
   completedTasks,
   onAddSubtask,
+  onEditTask,
 }) => {
   const { t } = useTranslation();
   const [completedCollapsed, setCompletedCollapsed] = useState(false);
@@ -44,6 +46,7 @@ export const TaskList: React.FC<TaskListProps> = ({
               <TaskItem
                 key={task.id}
                 task={task}
+                onEdit={onEditTask}
                 onAddSubtask={onAddSubtask}
               />
             ))}
@@ -91,6 +94,7 @@ export const TaskList: React.FC<TaskListProps> = ({
                   <TaskItem
                     key={task.id}
                     task={task}
+                    onEdit={onEditTask}
                     onAddSubtask={onAddSubtask}
                   />
                 ))}

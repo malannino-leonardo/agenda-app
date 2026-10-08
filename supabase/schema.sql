@@ -251,3 +251,72 @@ create policy "Users can update own tasks"
 create policy "Users can delete own tasks"
     on public.tasks for delete
     using (auth.uid() = user_id);
+
+-- ------------------------------------------------------------------------------
+-- 9. CALENDARS & SHARING TABLES
+-- Multi-calendar management and collaborative calendar sharing
+-- ------------------------------------------------------------------------------
+create table if not exists public.calendars (
+    id uuid primary key default uuid_generate_v4(),
+    user_id uuid not null references auth.users(id) on delete cascade,
+    name text not null,
+    color text default '#6366f1',
+    description text,
+    is_default boolean default false,
+    created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+    updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+create index if not exists idx_calendars_user_id on public.calendars(user_id);
+
+create table if not exists public.calendar_shares (
+    id uuid primary key default uuid_generate_v4(),
+    calendar_id uuid not null references public.calendars(id) on delete cascade,
+    email text not null,
+    permission text check (permission in ('view', 'edit')) default 'view',
+    created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+create index if not exists idx_calendar_shares_calendar_id on public.calendar_shares(calendar_id);
+create index if not exists idx_calendar_shares_email on public.calendar_shares(email);
+
+-- Extend tasks table for optional time and calendar assignment
+alter table public.tasks add column if not exists due_time text;
+alter table public.tasks add column if not exists calendar_id uuid references public.calendars(id) on delete set null;
+create index if not exists idx_tasks_calendar_id on public.tasks(calendar_id);
+
+drop trigger if exists set_calendars_updated_at on public.calendars;
+create trigger set_calendars_updated_at
+    before update on public.calendars
+    for each row execute function public.handle_updated_at();
+
+-- Calendars RLS policies
+alter table public.calendars enable row level security;
+alter table public.calendar_shares enable row level security;
+
+create policy "Users can view own calendars"
+    on public.calendars for select
+    using (auth.uid() = user_id);
+
+create policy "Users can create own calendars"
+    on public.calendars for insert
+    with check (auth.uid() = user_id);
+
+create policy "Users can update own calendars"
+    on public.calendars for update
+    using (auth.uid() = user_id);
+
+create policy "Users can delete own calendars"
+    on public.calendars for delete
+    using (auth.uid() = user_id);
+
+create policy "Users can manage shares for their calendars"
+    on public.calendar_shares for all
+    using (
+        exists (
+            select 1 from public.calendars
+            where public.calendars.id = calendar_shares.calendar_id
+            and public.calendars.user_id = auth.uid()
+        )
+    );
+

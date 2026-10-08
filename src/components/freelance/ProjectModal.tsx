@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Project, ProjectStatus } from '../../types';
 import { useApp } from '../../context/AppContext';
@@ -36,6 +36,28 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     initialProject?.status || 'in_progress'
   );
   const [deadline, setDeadline] = useState(initialProject?.deadline || '');
+
+  useEffect(() => {
+    if (initialProject) {
+      setTitle(initialProject.title || '');
+      setDescription(initialProject.description || '');
+      setClientId(initialProject.client_id || defaultClientId);
+      setBudget(initialProject.budget?.toString() || '0');
+      setQuotedPrice(initialProject.quoted_price?.toString() || '0');
+      setInvoicedAmount(initialProject.invoiced_amount?.toString() || '0');
+      setStatus(initialProject.status || 'in_progress');
+      setDeadline(initialProject.deadline || '');
+    } else {
+      setTitle('');
+      setDescription('');
+      setClientId(defaultClientId);
+      setBudget('0');
+      setQuotedPrice('0');
+      setInvoicedAmount('0');
+      setStatus('in_progress');
+      setDeadline('');
+    }
+  }, [initialProject, defaultClientId, isOpen]);
 
   if (!isOpen) return null;
 

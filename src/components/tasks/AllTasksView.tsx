@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useTranslation } from '../../context/LanguageContext';
-import { TaskScope } from '../../types';
+import { TaskScope, Task } from '../../types';
 import { TaskList } from './TaskList';
 import { TaskModal } from './TaskModal';
 
@@ -13,16 +13,25 @@ export const AllTasksView: React.FC = () => {
   const [scopeFilter, setScopeFilter] = useState<TaskScope | 'all'>('all');
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [taskModalParentId, setTaskModalParentId] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const effectiveScope = scopeFilter === 'all' ? undefined : scopeFilter;
   const { pendingTasks, completedTasks } = getOrganizedTasks(effectiveScope);
 
   const handleOpenAddSubtask = (parentId: string) => {
+    setEditingTask(null);
     setTaskModalParentId(parentId);
     setIsTaskModalOpen(true);
   };
 
   const handleOpenNewTask = () => {
+    setEditingTask(null);
+    setTaskModalParentId(null);
+    setIsTaskModalOpen(true);
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
     setTaskModalParentId(null);
     setIsTaskModalOpen(true);
   };
@@ -94,12 +103,17 @@ export const AllTasksView: React.FC = () => {
         pendingTasks={pendingTasks}
         completedTasks={completedTasks}
         onAddSubtask={handleOpenAddSubtask}
+        onEditTask={handleEditTask}
       />
 
       {/* Task Modal */}
       <TaskModal
         isOpen={isTaskModalOpen}
-        onClose={() => setIsTaskModalOpen(false)}
+        onClose={() => {
+          setIsTaskModalOpen(false);
+          setEditingTask(null);
+        }}
+        taskToEdit={editingTask}
         defaultScope={scopeFilter === 'all' ? 'agenda' : scopeFilter}
         defaultParentId={taskModalParentId}
       />

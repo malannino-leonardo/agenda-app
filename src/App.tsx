@@ -6,6 +6,7 @@ import { Header } from './components/common/Header';
 import { Sidebar } from './components/common/Sidebar';
 import { DesktopInstallBanner } from './components/common/DesktopInstallBanner';
 import { AuthModal } from './components/auth/AuthModal';
+import { GuestAccessModal } from './components/agenda/GuestAccessModal';
 import { DailyAgendaModule } from './components/agenda/DailyAgendaModule';
 import { AllTasksView } from './components/tasks/AllTasksView';
 import { ProjectsModule } from './components/projects/ProjectsModule';
@@ -26,7 +27,7 @@ import {
 import { NavigationModule } from './types';
 
 export const App: React.FC = () => {
-  const { activeModule, setActiveModule } = useApp();
+  const { activeModule, setActiveModule, guestEmail } = useApp();
   const { user } = useAuth();
   const { t } = useTranslation();
   const [isGlobalTaskModalOpen, setIsGlobalTaskModalOpen] = useState(false);
@@ -40,14 +41,18 @@ export const App: React.FC = () => {
   ];
 
   const renderContent = () => {
-    // Universal home presentation, legal, and 404 routes accessible to everyone
+    // Universal home presentation, legal, account/settings, and 404 routes accessible to everyone
     if (activeModule === 'home') return <PlatformPresentation />;
     if (activeModule === 'privacy') return <PrivacyPolicyPage />;
     if (activeModule === 'terms') return <TermsOfServicePage />;
     if (activeModule === '404') return <NotFoundPage />;
+    if (activeModule === 'account') return <AccountPage />;
 
-    // If user is not authenticated, show platform presentation landing page
+    // If user is not authenticated, check if guest has access to agenda
     if (!user) {
+      if (guestEmail && activeModule === 'agenda') {
+        return <DailyAgendaModule />;
+      }
       return <PlatformPresentation />;
     }
 
@@ -61,15 +66,13 @@ export const App: React.FC = () => {
         return <ProjectsModule />;
       case 'clients':
         return <ClientsModule />;
-      case 'account':
-        return <AccountPage />;
       default:
         return <NotFoundPage />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans selection:bg-indigo-500/25 selection:text-indigo-100">
+    <div className="h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans selection:bg-indigo-500/25 selection:text-indigo-100 overflow-hidden">
       {/* Desktop App Installation Banner */}
       <DesktopInstallBanner />
 
@@ -77,19 +80,19 @@ export const App: React.FC = () => {
       <Header onOpenNewTask={() => setIsGlobalTaskModalOpen(true)} />
 
       {/* Main Layout Area */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Sidebar: Only visible when user is logged in AND not on 404 or home page */}
         {user && activeModule !== '404' && activeModule !== 'home' && <Sidebar />}
 
         {/* Dynamic Workspace Content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-8 max-w-7xl mx-auto w-full pb-20 md:pb-8">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6 md:p-8 max-w-7xl mx-auto w-full pb-24 md:pb-8">
           {renderContent()}
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation Bar (Hidden on desktop, and only shown when authenticated and not on 404 or home) */}
+      {/* Mobile Bottom Navigation Bar (Hidden on desktop, with safe-area support and min 44px touch targets) */}
       {user && activeModule !== '404' && activeModule !== 'home' && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-md border-t border-zinc-850 px-2 py-2 flex items-center justify-around">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-md border-t border-zinc-850 px-1 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom,0.5rem))] flex items-center justify-around shadow-2xl">
           {mobileNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeModule === item.id;
@@ -99,14 +102,14 @@ export const App: React.FC = () => {
                 key={item.id}
                 type="button"
                 onClick={() => setActiveModule(item.id)}
-                className={`flex flex-col items-center gap-1 px-3 py-1 rounded text-[10px] font-mono transition-colors ${
+                className={`flex flex-col items-center justify-center min-h-[44px] min-w-[48px] px-2 py-1 rounded text-[10px] font-mono transition-colors ${
                   isActive
-                    ? 'text-indigo-300 font-semibold'
+                    ? 'text-indigo-400 font-semibold bg-zinc-900/60'
                     : 'text-zinc-500 hover:text-zinc-300'
                 }`}
               >
-                <Icon className="w-4 h-4" />
-                <span className="truncate max-w-[60px]">{item.label}</span>
+                <Icon className="w-4 h-4 mb-0.5" />
+                <span className="truncate max-w-[56px] text-[10px]">{item.label}</span>
               </button>
             );
           })}
@@ -121,6 +124,9 @@ export const App: React.FC = () => {
           defaultScope={activeModule === 'projects' ? 'projects' : 'agenda'}
         />
       )}
+
+      {/* Guest Calendar Access Modal */}
+      <GuestAccessModal />
 
       {/* Auth Modal (Sign In / Sign Up with Interactive Blobatar) */}
       <AuthModal />

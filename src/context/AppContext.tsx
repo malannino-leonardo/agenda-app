@@ -5,6 +5,8 @@ import {
   Task,
   NavigationModule,
   TaskScope,
+  Calendar,
+  CalendarShare,
 } from '../types';
 import { loadStoredData, saveStoredData } from '../lib/storage';
 import { useAuth } from './AuthContext';
@@ -27,12 +29,30 @@ interface AppContextType {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
 
+  // Guest Shared Calendar Access
+  guestEmail: string | null;
+  setGuestEmail: (email: string | null) => void;
+  isGuestAccessModalOpen: boolean;
+  setIsGuestAccessModalOpen: (open: boolean) => void;
+  openGuestAccess: () => void;
+  validateGuestEmailAccess: (email: string) => { success: boolean; calendar?: Calendar };
+
+  // Calendar Operations
+  calendars: Calendar[];
+  activeCalendarId: string | 'all';
+  setActiveCalendarId: (id: string | 'all') => void;
+  addCalendar: (data: { name: string; color: string; description?: string }) => Calendar;
+  updateCalendar: (id: string, updates: Partial<Calendar>) => void;
+  deleteCalendar: (id: string) => void;
+  shareCalendar: (calendarId: string, email: string, permission: 'view' | 'edit') => void;
+  removeCalendarShare: (calendarId: string, shareId: string) => void;
+
   // Task Operations
   toggleTaskCompletion: (taskId: string) => void;
   addTask: (data: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => void;
   updateTask: (taskId: string, updates: Partial<Task>) => void;
   deleteTask: (taskId: string) => void;
-  getOrganizedTasks: (scope?: TaskScope, projectId?: string | null) => {
+  getOrganizedTasks: (scope?: TaskScope, projectId?: string | null, calendarId?: string | null) => {
     pendingTasks: Task[];
     completedTasks: Task[];
   };
@@ -95,6 +115,71 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [clients, setClients] = useState<Client[]>(initialData.clients);
   const [projects, setProjects] = useState<Project[]>(initialData.projects);
   const [tasks, setTasks] = useState<Task[]>(initialData.tasks);
+  const [calendars, setCalendars] = useState<Calendar[]>(() => {
+    return initialData.calendars && initialData.calendars.length > 0
+      ? initialData.calendars
+      : [
+          {
+            id: 'default-main',
+            name: 'Personal',
+            color: '#6366f1',
+            description: 'Main personal calendar',
+            is_default: true,
+            shares: [],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ];
+  });
+  const [activeCalendarId, setActiveCalendarId] = useState<string | 'all'>('all');
+
+  // Guest Shared Calendar Access
+  const [guestEmail, setGuestEmailState] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('agenda_guest_email');
+    } catch {
+      return null;
+    }
+  });
+
+  const [isGuestAccessModalOpen, setIsGuestAccessModalOpen] = useState(false);
+
+  const setGuestEmail = useCallback((email: string | null) => {
+    setGuestEmailState(email);
+    try {
+      if (email) {
+        localStorage.setItem('agenda_guest_email', email);
+      } else {
+        localStorage.removeItem('agenda_guest_email');
+      }
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
+
+  const openGuestAccess = useCallback(() => {
+    setIsGuestAccessModalOpen(true);
+  }, []);
+
+  const validateGuestEmailAccess = useCallback(
+    (email: string): { success: boolean; calendar?: Calendar } => {
+      const cleanEmail = email.trim().toLowerCase();
+      if (!cleanEmail) return { success: false };
+
+      const matchedCal = calendars.find((cal) =>
+        (cal.shares || []).some((s) => s.email.toLowerCase() === cleanEmail)
+      );
+
+      if (matchedCal) {
+        setGuestEmail(cleanEmail);
+        setActiveCalendarId(matchedCal.id);
+        return { success: true, calendar: matchedCal };
+      }
+
+      return { success: false };
+    },
+    [calendars, setGuestEmail]
+  );
 
   const [activeModule, setActiveModuleState] = useState<NavigationModule>(() => {
     return getModuleFromPath(window.location.pathname);
@@ -140,6 +225,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (clientsRes.data) setClients(clientsRes.data as Client[]);
       if (projectsRes.data) setProjects(projectsRes.data as Project[]);
       if (tasksRes.data) setTasks(tasksRes.data as Task[]);
+
+      // Attempt to load calendars if table exists
+      try {
+        const { data: calsData } = await supabase
+          .from('calendars')
+          .select('*, shares:calendar_shares(*)')
+          .order('created_at', { ascending: true });
+        if (calsData && calsData.length > 0) {
+          setCalendars(calsData as Calendar[]);
+        }
+      } catch {
+        // Table may not exist yet, keep local calendars
+      }
     } catch {
       // Fallback to local storage
     }
@@ -157,11 +255,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Save to localStorage whenever data changes (offline cache)
   useEffect(() => {
-    saveStoredData(clients, projects, tasks);
-  }, [clients, projects, tasks]);
+    saveStoredData(clients, projects, tasks, calendars);
+  }, [clients, projects, tasks, calendars]);
 
   // Toggle Task Completion
   const toggleTaskCompletion = (taskId: string) => {
+    if (!user) {
+      console.warn('Guest users have read-only access. Sign in to modify tasks.');
+      return;
+    }
     const target = tasks.find((t) => t.id === taskId);
     if (!target) return;
 
@@ -208,6 +310,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Add Task
   const addTask = (data: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => {
+    if (!user) {
+      console.warn('Guest users cannot create tasks.');
+      return;
+    }
     const rateLimitCheck = checkRateLimit('action_task_create', RATE_LIMIT_CONFIGS.TASK_CREATE);
     if (!rateLimitCheck.allowed) {
       console.warn(`Task creation rate limit exceeded. Please wait ${rateLimitCheck.retryAfterSeconds}s.`);
@@ -222,6 +328,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...data,
       id: newId,
       due_date: safeDueDate || undefined,
+      due_time: data.due_time || undefined,
+      calendar_id: data.calendar_id || undefined,
       user_id: user?.id,
       created_at: now,
       updated_at: now,
@@ -232,29 +340,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (isSupabaseConfigured && supabase && user) {
       const dbScope = (data.scope === 'projects' ? 'freelance' : data.scope) || 'agenda';
-      supabase
+      const insertPayload: Record<string, unknown> = {
+        id: newId,
+        user_id: user.id,
+        parent_id: toValidUUIDOrNull(data.parent_id),
+        scope: dbScope,
+        project_id: toValidUUIDOrNull(data.project_id),
+        title: data.title,
+        description: data.description || null,
+        status: data.status || 'pending',
+        priority: data.priority || 'medium',
+        due_date: safeDueDate,
+        order_index: data.order_index || 0,
+      };
+      if (data.due_time) insertPayload.due_time = data.due_time;
+      if (toValidUUIDOrNull(data.calendar_id)) insertPayload.calendar_id = data.calendar_id;
+
+      const client = supabase;
+      client
         .from('tasks')
-        .insert({
-          id: newId,
-          user_id: user.id,
-          parent_id: toValidUUIDOrNull(data.parent_id),
-          scope: dbScope,
-          project_id: toValidUUIDOrNull(data.project_id),
-          title: data.title,
-          description: data.description || null,
-          status: data.status || 'pending',
-          priority: data.priority || 'medium',
-          due_date: safeDueDate,
-          order_index: data.order_index || 0,
-        })
+        .insert(insertPayload)
         .then(({ error }) => {
-          if (error) console.error('Supabase tasks insert error:', error);
+          if (error) {
+            if (error.message?.includes('column')) {
+              delete insertPayload.due_time;
+              delete insertPayload.calendar_id;
+              client.from('tasks').insert(insertPayload);
+            } else {
+              console.error('Supabase tasks insert error:', error);
+            }
+          }
         });
     }
   };
 
   // Update Task
   const updateTask = (taskId: string, updates: Partial<Task>) => {
+    if (!user) {
+      console.warn('Guest users cannot edit tasks.');
+      return;
+    }
     const now = new Date().toISOString();
     setTasks((prev) =>
       prev.map((t) =>
@@ -288,23 +413,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if ('project_id' in dbUpdates) {
         dbUpdates.project_id = toValidUUIDOrNull(dbUpdates.project_id as string);
       }
+      if ('calendar_id' in dbUpdates) {
+        dbUpdates.calendar_id = toValidUUIDOrNull(dbUpdates.calendar_id as string);
+      }
       if ('due_date' in dbUpdates) {
         dbUpdates.due_date = toSafeISODate(dbUpdates.due_date as string);
       }
 
-      supabase
+      const client = supabase;
+      client
         .from('tasks')
         .update(dbUpdates)
         .eq('id', taskId)
         .eq('user_id', user.id)
         .then(({ error }) => {
-          if (error) console.error('Supabase tasks update error:', error);
+          if (error) {
+            if (error.message?.includes('column')) {
+              delete dbUpdates.due_time;
+              delete dbUpdates.calendar_id;
+              client.from('tasks').update(dbUpdates).eq('id', taskId).eq('user_id', user.id);
+            } else {
+              console.error('Supabase tasks update error:', error);
+            }
+          }
         });
     }
   };
 
   // Delete Task
   const deleteTask = (taskId: string) => {
+    if (!user) {
+      console.warn('Guest users cannot delete tasks.');
+      return;
+    }
     setTasks((prev) => prev.filter((t) => t.id !== taskId && t.parent_id !== taskId));
 
     if (isSupabaseConfigured && supabase && user) {
@@ -502,8 +643,168 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Calendar Operations
+  const addCalendar = useCallback(
+    (data: { name: string; color: string; description?: string }): Calendar => {
+      const newId = generateUUID();
+      const now = new Date().toISOString();
+      const newCal: Calendar = {
+        id: newId,
+        user_id: user?.id,
+        name: data.name.trim(),
+        color: data.color || '#6366f1',
+        description: data.description?.trim() || undefined,
+        is_default: false,
+        shares: [],
+        created_at: now,
+        updated_at: now,
+      };
+
+      setCalendars((prev) => [...prev, newCal]);
+
+      if (isSupabaseConfigured && supabase && user) {
+        supabase
+          .from('calendars')
+          .insert({
+            id: newId,
+            user_id: user.id,
+            name: newCal.name,
+            color: newCal.color,
+            description: newCal.description || null,
+            is_default: false,
+          })
+          .then(({ error }) => {
+            if (error) console.warn('Supabase calendar insert notice:', error.message);
+          });
+      }
+
+      return newCal;
+    },
+    [user]
+  );
+
+  const updateCalendar = useCallback(
+    (id: string, updates: Partial<Calendar>) => {
+      const now = new Date().toISOString();
+      setCalendars((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, ...updates, updated_at: now } : c))
+      );
+
+      if (isSupabaseConfigured && supabase && user) {
+        supabase
+          .from('calendars')
+          .update({
+            name: updates.name,
+            color: updates.color,
+            description: updates.description,
+            updated_at: now,
+          })
+          .eq('id', id)
+          .eq('user_id', user.id)
+          .then(({ error }) => {
+            if (error) console.warn('Supabase calendar update notice:', error.message);
+          });
+      }
+    },
+    [user]
+  );
+
+  const deleteCalendar = useCallback(
+    (id: string) => {
+      setCalendars((prev) => prev.filter((c) => c.id !== id && !c.is_default));
+      if (activeCalendarId === id) {
+        setActiveCalendarId('all');
+      }
+
+      if (isSupabaseConfigured && supabase && user) {
+        supabase
+          .from('calendars')
+          .delete()
+          .eq('id', id)
+          .eq('user_id', user.id)
+          .then(({ error }) => {
+            if (error) console.warn('Supabase calendar delete notice:', error.message);
+          });
+      }
+    },
+    [activeCalendarId, user]
+  );
+
+  const shareCalendar = useCallback(
+    (calendarId: string, email: string, permission: 'view' | 'edit') => {
+      const newShareId = generateUUID();
+      const now = new Date().toISOString();
+      const newShare: CalendarShare = {
+        id: newShareId,
+        calendar_id: calendarId,
+        email: email.trim().toLowerCase(),
+        permission,
+        created_at: now,
+      };
+
+      setCalendars((prev) =>
+        prev.map((c) => {
+          if (c.id === calendarId) {
+            const existingShares = c.shares || [];
+            return {
+              ...c,
+              shares: [...existingShares.filter((s) => s.email !== newShare.email), newShare],
+            };
+          }
+          return c;
+        })
+      );
+
+      if (isSupabaseConfigured && supabase && user) {
+        supabase
+          .from('calendar_shares')
+          .insert({
+            id: newShareId,
+            calendar_id: calendarId,
+            email: newShare.email,
+            permission: newShare.permission,
+          })
+          .then(({ error }) => {
+            if (error) console.warn('Supabase calendar_shares notice:', error.message);
+          });
+      }
+    },
+    [user]
+  );
+
+  const removeCalendarShare = useCallback(
+    (calendarId: string, shareId: string) => {
+      setCalendars((prev) =>
+        prev.map((c) => {
+          if (c.id === calendarId) {
+            return {
+              ...c,
+              shares: (c.shares || []).filter((s) => s.id !== shareId),
+            };
+          }
+          return c;
+        })
+      );
+
+      if (isSupabaseConfigured && supabase && user) {
+        supabase
+          .from('calendar_shares')
+          .delete()
+          .eq('id', shareId)
+          .then(({ error }) => {
+            if (error) console.warn('Supabase calendar_shares delete notice:', error.message);
+          });
+      }
+    },
+    [user]
+  );
+
   // Organized Hierarchical Tasks
-  const getOrganizedTasks = (scope?: TaskScope, projectId?: string | null) => {
+  const getOrganizedTasks = (
+    scope?: TaskScope,
+    projectId?: string | null,
+    calendarId?: string | null
+  ) => {
     let filtered = tasks;
 
     if (scope) {
@@ -515,6 +816,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     if (projectId) {
       filtered = filtered.filter((t) => t.project_id === projectId);
+    }
+    if (calendarId && calendarId !== 'all') {
+      filtered = filtered.filter((t) => t.calendar_id === calendarId);
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -547,6 +851,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     clients,
     projects,
     tasks,
+    calendars,
+    activeCalendarId,
+    setActiveCalendarId,
+    addCalendar,
+    updateCalendar,
+    deleteCalendar,
+    shareCalendar,
+    removeCalendarShare,
     activeModule,
     setActiveModule,
     navigateToHome,
@@ -554,6 +866,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSelectedProjectId,
     searchQuery,
     setSearchQuery,
+    guestEmail,
+    setGuestEmail,
+    isGuestAccessModalOpen,
+    setIsGuestAccessModalOpen,
+    openGuestAccess,
+    validateGuestEmailAccess,
     toggleTaskCompletion,
     addTask,
     updateTask,

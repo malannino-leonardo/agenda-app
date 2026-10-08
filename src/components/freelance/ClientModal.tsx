@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Client } from '../../types';
 import { useApp } from '../../context/AppContext';
@@ -22,9 +22,37 @@ export const ClientModal: React.FC<ClientModalProps> = ({
   const [company, setCompany] = useState(initialClient?.company || '');
   const [email, setEmail] = useState(initialClient?.email || '');
   const [phone, setPhone] = useState(initialClient?.phone || '');
-  const [hourlyRate, setHourlyRate] = useState(initialClient?.hourly_rate?.toString() || '');
+  const [hourlyRate, setHourlyRate] = useState(
+    initialClient?.hourly_rate !== undefined && initialClient.hourly_rate !== null
+      ? String(initialClient.hourly_rate)
+      : ''
+  );
   const [currency, setCurrency] = useState(initialClient?.currency || 'EUR');
   const [notes, setNotes] = useState(initialClient?.notes || '');
+
+  useEffect(() => {
+    if (initialClient) {
+      setName(initialClient.name || '');
+      setCompany(initialClient.company || '');
+      setEmail(initialClient.email || '');
+      setPhone(initialClient.phone || '');
+      setHourlyRate(
+        initialClient.hourly_rate !== undefined && initialClient.hourly_rate !== null
+          ? String(initialClient.hourly_rate)
+          : ''
+      );
+      setCurrency(initialClient.currency || 'EUR');
+      setNotes(initialClient.notes || '');
+    } else {
+      setName('');
+      setCompany('');
+      setEmail('');
+      setPhone('');
+      setHourlyRate('');
+      setCurrency('EUR');
+      setNotes('');
+    }
+  }, [initialClient, isOpen]);
 
   if (!isOpen) return null;
 

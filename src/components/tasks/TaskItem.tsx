@@ -8,6 +8,7 @@ import {
   Clock,
   Briefcase,
   FileText,
+  Pencil,
 } from 'lucide-react';
 import { Task } from '../../types';
 import { QuickCompleteButton } from './QuickCompleteButton';
@@ -16,16 +17,18 @@ import { useTranslation } from '../../context/LanguageContext';
 
 interface TaskItemProps {
   task: Task;
+  onEdit?: (task: Task) => void;
   onAddSubtask?: (parentId: string) => void;
   isNested?: boolean;
 }
 
 export const TaskItem: React.FC<TaskItemProps> = ({
   task,
+  onEdit,
   onAddSubtask,
   isNested = false,
 }) => {
-  const { toggleTaskCompletion, deleteTask, projects } = useApp();
+  const { toggleTaskCompletion, deleteTask, projects, calendars } = useApp();
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -35,6 +38,11 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   // Associated project metadata
   const linkedProject = task.project_id
     ? projects.find((p) => p.id === task.project_id)
+    : null;
+
+  // Associated calendar metadata
+  const linkedCalendar = task.calendar_id
+    ? calendars.find((c) => c.id === task.calendar_id)
     : null;
 
   const getPriorityLabel = () => {
@@ -86,6 +94,15 @@ export const TaskItem: React.FC<TaskItemProps> = ({
         {/* Task Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Calendar Indicator Dot */}
+            {linkedCalendar && (
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: linkedCalendar.color }}
+                title={`Calendar: ${linkedCalendar.name}`}
+              />
+            )}
+
             {/* Title */}
             <span
               className={`text-sm font-medium tracking-tight ${
@@ -119,7 +136,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
           )}
 
           {/* Minimal metadata row (Strictly no badges) */}
-          <div className="flex items-center gap-4 mt-2 text-[11px] font-mono text-zinc-500">
+          <div className="flex items-center gap-3 sm:gap-4 mt-2 text-[11px] font-mono text-zinc-500 flex-wrap">
             {/* Priority dot + label */}
             <span className={`inline-flex items-center gap-1.5 ${priorityStyle.text}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${priorityStyle.dot}`} />
@@ -138,7 +155,15 @@ export const TaskItem: React.FC<TaskItemProps> = ({
             {task.due_date && (
               <span className="inline-flex items-center gap-1 text-zinc-400">
                 <Calendar className="w-3 h-3 text-zinc-500" />
-                <span>{task.due_date}</span>
+                <span>{task.due_date.split('T')[0]}</span>
+              </span>
+            )}
+
+            {/* Scheduled Time */}
+            {task.due_time && (
+              <span className="inline-flex items-center gap-1 text-zinc-300 font-semibold">
+                <Clock className="w-3 h-3 text-zinc-400" />
+                <span>{task.due_time}</span>
               </span>
             )}
 
@@ -163,8 +188,20 @@ export const TaskItem: React.FC<TaskItemProps> = ({
           </div>
         </div>
 
-        {/* Action buttons */}
-        <div className="flex items-center gap-1 opacity-60 group-hover/item:opacity-100 transition-opacity">
+        {/* Action buttons (Clean touch-friendly targets) */}
+        <div className="flex items-center gap-1 shrink-0">
+          {onEdit && (
+            <button
+              type="button"
+              onClick={() => onEdit(task)}
+              className="p-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded transition-colors focus:outline-none"
+              title={t.common.edit}
+              aria-label={t.common.edit}
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+          )}
+
           {onAddSubtask && !isNested && (
             <button
               type="button"
@@ -180,7 +217,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
           <button
             type="button"
             onClick={() => deleteTask(task.id)}
-            className="p-1.5 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded transition-colors focus:outline-none"
+            className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-zinc-800 rounded transition-colors focus:outline-none"
             title={t.common.delete}
             aria-label={t.common.delete}
           >
@@ -196,6 +233,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
             <TaskItem
               key={subtask.id}
               task={subtask}
+              onEdit={onEdit}
               isNested={true}
             />
           ))}

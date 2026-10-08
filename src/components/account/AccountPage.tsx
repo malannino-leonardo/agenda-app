@@ -18,6 +18,7 @@ import { useTranslation } from '../../context/LanguageContext';
 import { InteractiveBlobatar } from '../common/InteractiveBlobatar';
 import { useApp } from '../../context/AppContext';
 import { getInputCaretCoordinates } from '../../lib/caret';
+import { AppearanceSection } from './AppearanceSection';
 
 export const AccountPage: React.FC = () => {
   const {
@@ -168,21 +169,27 @@ export const AccountPage: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="max-w-md mx-auto py-12 text-center space-y-6">
-        <div className="flex justify-center">
-          <InteractiveBlobatar name="Guest" size={104} />
+      <div className="max-w-xl mx-auto py-10 space-y-8 animate-fade-in">
+        <div className="p-8 bg-zinc-900/60 border border-zinc-800 rounded-xl text-center space-y-6 shadow-sm">
+          <div className="flex justify-center">
+            <InteractiveBlobatar name="Guest" size={104} />
+          </div>
+          <h2 className="text-xl font-medium text-zinc-100">{t.account.title}</h2>
+          <p className="text-xs text-zinc-400 font-mono max-w-sm mx-auto">
+            Sign in to access your profile, sync data securely with Supabase, and customize your account icon.
+          </p>
+          <div>
+            <button
+              type="button"
+              onClick={openSignIn}
+              className="px-5 py-2.5 text-xs font-mono uppercase tracking-wider bg-zinc-100 hover:bg-zinc-300 text-zinc-950 font-medium rounded transition-colors shadow-sm"
+            >
+              {t.account.signIn}
+            </button>
+          </div>
         </div>
-        <h2 className="text-xl font-medium text-zinc-100">{t.account.title}</h2>
-        <p className="text-xs text-zinc-400 font-mono">
-          Sign in to access your profile, sync data securely with Supabase, and customize your account icon.
-        </p>
-        <button
-          type="button"
-          onClick={openSignIn}
-          className="px-4 py-2 text-xs font-mono uppercase tracking-wider bg-zinc-100 hover:bg-zinc-300 text-zinc-950 font-medium rounded transition-colors"
-        >
-          {t.account.signIn}
-        </button>
+
+        <AppearanceSection />
       </div>
     );
   }
@@ -214,9 +221,9 @@ export const AccountPage: React.FC = () => {
 
       {/* Side-by-side Layout: Left Side Personal Info Card + Blobatar, Right Side Settings Forms */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Persistent Personal Info & Live Blobatar */}
-        <div className="lg:col-span-4 sticky top-20">
-          <div className="p-6 bg-zinc-900/90 border border-zinc-800 rounded-xl space-y-6 shadow-xl hover:border-zinc-700/70 transition-colors">
+        {/* Left Column: Personal Info & Live Blobatar (Scrolls naturally with page) */}
+        <div className="lg:col-span-4">
+          <div className="p-6 bg-zinc-900/70 border border-zinc-800 rounded-xl space-y-6 shadow-xl hover:border-zinc-700/70 transition-colors">
             {/* Centered Avatar that follows cursor at all times */}
             <div className="flex flex-col items-center justify-center text-center">
               <div className="mb-4 flex items-center justify-center">
@@ -263,7 +270,7 @@ export const AccountPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => signOut()}
-                className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 text-xs font-mono border border-zinc-800 hover:border-zinc-700 bg-zinc-950 hover:bg-zinc-850 text-zinc-300 hover:text-zinc-100 rounded transition-colors"
+                className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 text-xs font-mono border border-zinc-800 hover:border-zinc-700 bg-zinc-900 hover:bg-zinc-850 text-zinc-300 hover:text-zinc-100 rounded transition-colors"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span>{t.account.signOut}</span>
@@ -487,6 +494,9 @@ export const AccountPage: React.FC = () => {
               </div>
             </form>
           </div>
+
+          {/* Appearance & Interface Scale Settings */}
+          <AppearanceSection />
 
           {/* Danger Zone: Delete Account */}
           <div className="p-6 bg-red-950/10 border border-red-900/40 rounded-xl space-y-4">

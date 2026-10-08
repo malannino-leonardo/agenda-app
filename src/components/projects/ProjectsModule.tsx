@@ -13,10 +13,11 @@ import {
   Briefcase,
   Clock,
 } from 'lucide-react';
-import { Project, ProjectStatus } from '../../types';
+import { Project, ProjectStatus, Task } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { useTranslation } from '../../context/LanguageContext';
 import { ProjectModal } from './ProjectModal';
+import { TaskModal } from '../tasks/TaskModal';
 
 export const ProjectsModule: React.FC = () => {
   const {
@@ -33,6 +34,7 @@ export const ProjectsModule: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [expandedTasksProjectId, setExpandedTasksProjectId] = useState<string | null>(null);
   const [inlineTaskTitles, setInlineTaskTitles] = useState<Record<string, string>>({});
 
@@ -455,6 +457,14 @@ export const ProjectsModule: React.FC = () => {
                                   {t.priority === 'medium' && (
                                     <span className="text-amber-400">MED</span>
                                   )}
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingTask(t)}
+                                    className="p-1 text-zinc-500 hover:text-zinc-200 opacity-60 group-hover/task:opacity-100 rounded transition-opacity"
+                                    title="Edit task"
+                                  >
+                                    <Pencil className="w-3 h-3" />
+                                  </button>
                                 </div>
                               </div>
                             );
@@ -508,6 +518,14 @@ export const ProjectsModule: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         projectToEdit={editingProject}
+      />
+
+      {/* Task Edit Modal */}
+      <TaskModal
+        isOpen={Boolean(editingTask)}
+        onClose={() => setEditingTask(null)}
+        taskToEdit={editingTask}
+        defaultScope="projects"
       />
     </div>
   );

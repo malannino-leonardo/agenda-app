@@ -32,9 +32,30 @@ export interface Project {
   updated_at: string;
 }
 
+export interface CalendarShare {
+  id: string;
+  calendar_id: string;
+  email: string;
+  permission: 'view' | 'edit';
+  created_at: string;
+}
+
+export interface Calendar {
+  id: string;
+  user_id?: string;
+  name: string;
+  color: string;
+  description?: string;
+  is_default?: boolean;
+  shares?: CalendarShare[];
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Task {
   id: string;
   user_id?: string;
+  calendar_id?: string | null;
   parent_id?: string | null;
   scope: TaskScope;
   project_id?: string | null;
@@ -43,6 +64,7 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   due_date?: string | null;
+  due_time?: string | null;
   order_index: number;
   completed_at?: string | null;
   created_at: string;

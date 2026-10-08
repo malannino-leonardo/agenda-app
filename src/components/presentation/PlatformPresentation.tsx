@@ -5,6 +5,7 @@ import {
   Briefcase,
   ArrowRight,
   Eye,
+  Mail,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from '../../context/LanguageContext';
@@ -13,7 +14,7 @@ import { useApp } from '../../context/AppContext';
 export const PlatformPresentation: React.FC = () => {
   const { user, openSignIn, openSignUp } = useAuth();
   const { t } = useTranslation();
-  const { setActiveModule } = useApp();
+  const { setActiveModule, openGuestAccess } = useApp();
 
   const features = [
     {
@@ -77,6 +78,14 @@ export const PlatformPresentation: React.FC = () => {
                 className="inline-flex items-center gap-2 px-6 py-3 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 font-medium text-xs font-mono uppercase tracking-wider rounded transition-colors"
               >
                 <span>{t.presentation.signIn}</span>
+              </button>
+              <button
+                type="button"
+                onClick={openGuestAccess}
+                className="inline-flex items-center gap-2 px-5 py-3 bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 text-zinc-300 font-medium text-xs font-mono uppercase tracking-wider rounded transition-colors"
+              >
+                <Mail className="w-4 h-4 text-zinc-400" />
+                <span>View Shared Calendar</span>
               </button>
             </>
           )}

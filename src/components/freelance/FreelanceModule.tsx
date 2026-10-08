@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useTranslation } from '../../context/LanguageContext';
-import { Project } from '../../types';
+import { Project, Task } from '../../types';
 import { TaskList } from '../tasks/TaskList';
 import { TaskModal } from '../tasks/TaskModal';
 import { ProjectModal } from './ProjectModal';
@@ -31,6 +31,7 @@ export const FreelanceModule: React.FC = () => {
 
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [taskModalParentId, setTaskModalParentId] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const activeProject = projects.find((p) => p.id === selectedProjectId) || (projects.length > 0 ? projects[0] : null);
   const projectClient = activeProject?.client_id
@@ -243,6 +244,10 @@ export const FreelanceModule: React.FC = () => {
                   pendingTasks={pendingTasks}
                   completedTasks={completedTasks}
                   onAddSubtask={handleOpenAddSubtask}
+                  onEditTask={(task) => {
+                    setEditingTask(task);
+                    setIsTaskModalOpen(true);
+                  }}
                 />
               </div>
             </div>
@@ -263,7 +268,11 @@ export const FreelanceModule: React.FC = () => {
       {/* Task Modal */}
       <TaskModal
         isOpen={isTaskModalOpen}
-        onClose={() => setIsTaskModalOpen(false)}
+        onClose={() => {
+          setIsTaskModalOpen(false);
+          setEditingTask(null);
+        }}
+        taskToEdit={editingTask}
         defaultScope="freelance"
         defaultProjectId={activeProject?.id || null}
         defaultParentId={taskModalParentId}
