@@ -100,7 +100,7 @@ export const ClientsModule: React.FC = () => {
             return (
               <div
                 key={client.id}
-                className="p-5 bg-zinc-900/40 hover:bg-zinc-900/70 border border-zinc-800 hover:border-sky-500/30 rounded-lg transition-all flex flex-col justify-between space-y-4 hover:shadow-lg hover:shadow-black/30 group"
+                className="p-5 bg-zinc-900/40 hover:bg-zinc-900/70 border border-zinc-800 hover:border-sky-500/30 rounded-lg card-hover flex flex-col justify-between space-y-4 hover:shadow-lg hover:shadow-black/30 group"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">

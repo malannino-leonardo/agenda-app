@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   User as UserIcon,
   Mail,
@@ -528,53 +529,55 @@ export const AccountPage: React.FC = () => {
       </div>
 
       {/* Delete Confirmation Modal */}
-      {isDeleteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-sm animate-fade-in">
-          <div className="max-w-md w-full bg-zinc-900 border border-zinc-800 rounded-lg p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center gap-2 text-red-400">
-              <AlertTriangle className="w-5 h-5" />
-              <h3 className="text-sm font-medium font-mono uppercase">
-                {t.account.deleteAccount}
-              </h3>
+      {isDeleteModalOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-sm animate-modal-backdrop">
+            <div className="max-w-md w-full bg-zinc-900 border border-zinc-800 rounded-lg p-6 space-y-4 shadow-2xl animate-modal-pop">
+              <div className="flex items-center gap-2 text-red-400">
+                <AlertTriangle className="w-5 h-5" />
+                <h3 className="text-sm font-medium font-mono uppercase">
+                  {t.account.deleteAccount}
+                </h3>
+              </div>
+
+              <p className="text-xs text-zinc-400 font-mono">
+                {t.account.confirmDeletePrompt}
+              </p>
+
+              <input
+                type="text"
+                value={deleteConfirmationText}
+                onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                placeholder="DELETE"
+                className="w-full px-3 py-2 text-xs font-mono uppercase bg-zinc-950 border border-zinc-800 rounded text-zinc-100 focus:border-red-500 transition-colors"
+              />
+
+              {deleteMsg && (
+                <p className="text-xs text-red-400 font-mono">{deleteMsg}</p>
+              )}
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  disabled={isDeleting}
+                  className="px-3 py-1.5 text-xs font-mono text-zinc-400 hover:text-zinc-200 border border-zinc-800 rounded transition-colors"
+                >
+                  {t.common.cancel}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  disabled={isDeleting || deleteConfirmationText.trim().toUpperCase() !== 'DELETE'}
+                  className="px-3 py-1.5 text-xs font-mono uppercase bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded transition-colors"
+                >
+                  {isDeleting ? t.common.loading : t.common.delete}
+                </button>
+              </div>
             </div>
-
-            <p className="text-xs text-zinc-400 font-mono">
-              {t.account.confirmDeletePrompt}
-            </p>
-
-            <input
-              type="text"
-              value={deleteConfirmationText}
-              onChange={(e) => setDeleteConfirmationText(e.target.value)}
-              placeholder="DELETE"
-              className="w-full px-3 py-2 text-xs font-mono uppercase bg-zinc-950 border border-zinc-800 rounded text-zinc-100 focus:border-red-500 transition-colors"
-            />
-
-            {deleteMsg && (
-              <p className="text-xs text-red-400 font-mono">{deleteMsg}</p>
-            )}
-
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsDeleteModalOpen(false)}
-                disabled={isDeleting}
-                className="px-3 py-1.5 text-xs font-mono text-zinc-400 hover:text-zinc-200 border border-zinc-800 rounded transition-colors"
-              >
-                {t.common.cancel}
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteAccount}
-                disabled={isDeleting || deleteConfirmationText.trim().toUpperCase() !== 'DELETE'}
-                className="px-3 py-1.5 text-xs font-mono uppercase bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded transition-colors"
-              >
-                {isDeleting ? t.common.loading : t.common.delete}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

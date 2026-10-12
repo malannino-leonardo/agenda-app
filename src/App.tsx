@@ -23,14 +23,27 @@ import {
   FolderKanban,
   Users,
   User as UserIcon,
+  Loader2,
 } from 'lucide-react';
 import { NavigationModule } from './types';
 
 export const App: React.FC = () => {
   const { activeModule, setActiveModule, guestEmail } = useApp();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const { t } = useTranslation();
   const [isGlobalTaskModalOpen, setIsGlobalTaskModalOpen] = useState(false);
+
+  // If loading has completed and user is not authenticated on a protected route, redirect to home
+  React.useEffect(() => {
+    if (!isLoading && !user) {
+      const protectedModules: NavigationModule[] = ['tasks', 'projects', 'clients'];
+      if (protectedModules.includes(activeModule)) {
+        setActiveModule('home');
+      } else if (activeModule === 'agenda' && !guestEmail) {
+        setActiveModule('home');
+      }
+    }
+  }, [isLoading, user, guestEmail, activeModule, setActiveModule]);
 
   const mobileNavItems: { id: NavigationModule; label: string; icon: React.ElementType }[] = [
     { id: 'agenda', label: t.nav.agenda, icon: Calendar },
@@ -41,12 +54,28 @@ export const App: React.FC = () => {
   ];
 
   const renderContent = () => {
-    // Universal home presentation, legal, account/settings, and 404 routes accessible to everyone
-    if (activeModule === 'home') return <PlatformPresentation />;
+    // Universal legal and 404 routes accessible to everyone
     if (activeModule === 'privacy') return <PrivacyPolicyPage />;
     if (activeModule === 'terms') return <TermsOfServicePage />;
     if (activeModule === '404') return <NotFoundPage />;
     if (activeModule === 'account') return <AccountPage />;
+
+    // When auth is still loading and user is not yet known:
+    // Prevent the landing page (index) from flashing on reload of non-index pages!
+    if (isLoading && !user) {
+      if (activeModule === 'home') return <PlatformPresentation />;
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] gap-3 text-zinc-500 font-mono text-xs animate-fade-in">
+          <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
+          <span>Loading...</span>
+        </div>
+      );
+    }
+
+    // Index presentation route: accessible to everyone, including authenticated users
+    if (activeModule === 'home') {
+      return <PlatformPresentation />;
+    }
 
     // If user is not authenticated, check if guest has access to agenda
     if (!user) {

@@ -8,6 +8,7 @@ import {
   LogOut,
   ChevronDown,
   Mail,
+  Home,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useTranslation } from '../../context/LanguageContext';
@@ -31,7 +32,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewTask }) => {
     openGuestAccess,
   } = useApp();
   const { language, setLanguage, t } = useTranslation();
-  const { user, profile, openSignIn, signOut } = useAuth();
+  const { user, profile, openSignIn, signOut, isLoading } = useAuth();
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -166,7 +167,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewTask }) => {
 
             {/* Dropdown Menu */}
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-zinc-900 border border-zinc-800 rounded-lg shadow-2xl py-1 z-50 animate-fade-in divide-y divide-zinc-800/60">
+              <div className="absolute right-0 mt-2 w-48 bg-zinc-900 border border-zinc-800 rounded-lg shadow-2xl py-1 z-50 animate-dropdown divide-y divide-zinc-800/60">
                 <div className="px-3 py-2">
                   <p className="text-xs font-medium text-zinc-100 truncate">{fullName}</p>
                   <p className="text-[10px] font-mono text-zinc-500 truncate">{user.email}</p>
@@ -183,6 +184,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewTask }) => {
                   >
                     <LayoutDashboard className="w-3.5 h-3.5 text-zinc-400" />
                     <span>{t.header.dashboard}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveModule('home');
+                      setIsDropdownOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-mono text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800/80 transition-colors"
+                  >
+                    <Home className="w-3.5 h-3.5 text-zinc-400" />
+                    <span>Home Page</span>
                   </button>
 
                   <button
@@ -214,6 +227,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewTask }) => {
               </div>
             )}
           </div>
+        ) : isLoading && activeModule !== 'home' ? (
+          <div className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 animate-pulse" />
         ) : (
           <div className="flex items-center gap-2">
             {guestEmail ? (

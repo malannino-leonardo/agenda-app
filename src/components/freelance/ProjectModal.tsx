@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Project, ProjectStatus } from '../../types';
 import { useApp } from '../../context/AppContext';
@@ -92,9 +93,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-      <div className="w-full max-w-lg bg-zinc-950 border border-zinc-800 rounded-lg shadow-2xl overflow-hidden">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-modal-backdrop">
+      <div className="w-full max-w-lg max-h-[90vh] flex flex-col bg-zinc-950 border border-zinc-800 rounded-lg shadow-2xl overflow-hidden animate-modal-pop">
         <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
           <h3 className="text-sm font-semibold tracking-wide text-zinc-100 uppercase font-mono">
             {initialProject ? t.common.edit : t.freelance.newProject}
@@ -244,6 +245,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

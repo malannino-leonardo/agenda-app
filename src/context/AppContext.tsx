@@ -9,7 +9,7 @@ import {
   CalendarShare,
 } from '../types';
 import { loadStoredData, saveStoredData } from '../lib/storage';
-import { useAuth } from './AuthContext';
+import { useAuth, getCachedAuthUser } from './AuthContext';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import {
   checkRateLimit,
@@ -66,12 +66,17 @@ interface AppContextType {
   addProject: (data: Omit<Project, 'id' | 'created_at' | 'updated_at'>) => void;
   updateProject: (id: string, updates: Partial<Project>) => void;
   deleteProject: (id: string) => void;
+
+  // Synchronization status & manual refresh
+  isDataLoading: boolean;
+  refreshData: () => Promise<void>;
 }
 
-const getModuleFromPath = (path: string): NavigationModule => {
+const getModuleFromPath = (path: string, isLoggedIn = false): NavigationModule => {
   const clean = path.replace(/^\/+|\/+$/g, '').toLowerCase();
-  if (!clean) return 'home';
-  if (clean === 'agenda') return 'agenda';
+  if (clean === 'home') return 'home';
+  if (!clean) return isLoggedIn ? 'agenda' : 'home';
+  if (clean === 'agenda' || clean === 'dashboard') return 'agenda';
   if (clean === 'tasks') return 'tasks';
   if (clean === 'projects' || clean === 'freelance') return 'projects';
   if (clean === 'clients') return 'clients';
@@ -109,12 +114,13 @@ const toValidUUIDOrNull = (val?: string | null): string | null => {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const initialData = useMemo(() => loadStoredData(), []);
 
   const [clients, setClients] = useState<Client[]>(initialData.clients);
   const [projects, setProjects] = useState<Project[]>(initialData.projects);
   const [tasks, setTasks] = useState<Task[]>(initialData.tasks);
+  const [isDataLoading, setIsDataLoading] = useState(false);
   const [calendars, setCalendars] = useState<Calendar[]>(() => {
     return initialData.calendars && initialData.calendars.length > 0
       ? initialData.calendars
@@ -182,7 +188,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 
   const [activeModule, setActiveModuleState] = useState<NavigationModule>(() => {
-    return getModuleFromPath(window.location.pathname);
+    const cachedAuth = getCachedAuthUser();
+    const isLogged = Boolean(cachedAuth.user);
+    const mod = getModuleFromPath(window.location.pathname, isLogged);
+    if (isLogged && mod === 'agenda' && (window.location.pathname === '/' || window.location.pathname === '')) {
+      window.history.replaceState(null, '', '/agenda');
+    }
+    return mod;
   });
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -196,52 +208,84 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const navigateToHome = useCallback(() => {
-    setActiveModuleState('home');
-    if (window.location.pathname !== '/') {
-      window.history.pushState(null, '', '/');
-    }
-  }, []);
+    setActiveModule('home');
+  }, [setActiveModule]);
 
   // Listen for browser forward/back buttons
   useEffect(() => {
     const handlePopState = () => {
-      setActiveModuleState(getModuleFromPath(window.location.pathname));
+      setActiveModuleState(getModuleFromPath(window.location.pathname, Boolean(user)));
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [user]);
 
-  // Fetch Supabase data when authenticated
+  // Fetch Supabase data when authenticated with verified session
   const fetchSupabaseData = useCallback(async () => {
     if (!isSupabaseConfigured || !supabase || !user) return;
 
     try {
+      setIsDataLoading(true);
+
+      // Verify or wait for active authenticated session in Supabase client
+      const { data: sessionData } = await supabase.auth.getSession();
+      let activeSession = sessionData?.session || session;
+
+      if (!activeSession) {
+        // Wait a short moment in case supabase is restoring token from storage
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        const retry = await supabase.auth.getSession();
+        activeSession = retry.data?.session || session;
+      }
+
+      if (!activeSession) {
+        console.warn('Supabase session not yet available; preserving cached data');
+        setIsDataLoading(false);
+        return;
+      }
+
       const [clientsRes, projectsRes, tasksRes] = await Promise.all([
-        supabase.from('clients').select('*').order('created_at', { ascending: false }),
-        supabase.from('projects').select('*').order('created_at', { ascending: false }),
-        supabase.from('tasks').select('*').order('order_index', { ascending: true }),
+        supabase.from('clients').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('projects').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('tasks').select('*').eq('user_id', user.id).order('order_index', { ascending: true }),
       ]);
 
-      if (clientsRes.data) setClients(clientsRes.data as Client[]);
-      if (projectsRes.data) setProjects(projectsRes.data as Project[]);
-      if (tasksRes.data) setTasks(tasksRes.data as Task[]);
+      if (clientsRes.error) {
+        console.warn('Notice loading clients:', clientsRes.error.message);
+      } else if (clientsRes.data) {
+        setClients(clientsRes.data as Client[]);
+      }
+
+      if (projectsRes.error) {
+        console.warn('Notice loading projects:', projectsRes.error.message);
+      } else if (projectsRes.data) {
+        setProjects(projectsRes.data as Project[]);
+      }
+
+      if (tasksRes.error) {
+        console.warn('Notice loading tasks:', tasksRes.error.message);
+      } else if (tasksRes.data) {
+        setTasks(tasksRes.data as Task[]);
+      }
 
       // Attempt to load calendars if table exists
       try {
-        const { data: calsData } = await supabase
+        const { data: calsData, error: calsError } = await supabase
           .from('calendars')
           .select('*, shares:calendar_shares(*)')
           .order('created_at', { ascending: true });
-        if (calsData && calsData.length > 0) {
+        if (!calsError && calsData && calsData.length > 0) {
           setCalendars(calsData as Calendar[]);
         }
       } catch {
         // Table may not exist yet, keep local calendars
       }
-    } catch {
-      // Fallback to local storage
+    } catch (err) {
+      console.warn('Notice fetching Supabase data:', err);
+    } finally {
+      setIsDataLoading(false);
     }
-  }, [user]);
+  }, [user, session]);
 
   useEffect(() => {
     if (user && isSupabaseConfigured && supabase) {
@@ -251,12 +295,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setProjects([]);
       setTasks([]);
     }
+  }, [user, session, fetchSupabaseData]);
+
+  // Re-sync when window regains focus (e.g. returning to tab)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (user && isSupabaseConfigured && supabase) {
+        fetchSupabaseData();
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, [user, fetchSupabaseData]);
 
-  // Save to localStorage whenever data changes (offline cache)
+  // Save to localStorage whenever data changes (offline cache) - ONLY when user is authenticated
   useEffect(() => {
-    saveStoredData(clients, projects, tasks, calendars);
-  }, [clients, projects, tasks, calendars]);
+    if (user) {
+      saveStoredData(clients, projects, tasks, calendars);
+    }
+  }, [user, clients, projects, tasks, calendars]);
 
   // Toggle Task Completion
   const toggleTaskCompletion = (taskId: string) => {
@@ -883,6 +940,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addProject,
     updateProject,
     deleteProject,
+    isDataLoading,
+    refreshData: fetchSupabaseData,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

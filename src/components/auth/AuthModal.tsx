@@ -77,10 +77,18 @@ export const AuthModal: React.FC = () => {
     try {
       if (authModalMode === 'signin') {
         const { error } = await signIn(email, password);
-        if (error) setErrorMsg(error.message);
+        if (error) {
+          setErrorMsg(error.message);
+        } else {
+          setActiveModule('agenda');
+        }
       } else {
         const { error } = await signUp(email, password, fullName);
-        if (error) setErrorMsg(error.message);
+        if (error) {
+          setErrorMsg(error.message);
+        } else {
+          setActiveModule('agenda');
+        }
       }
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'An unexpected authentication error occurred.');
@@ -95,8 +103,8 @@ export const AuthModal: React.FC = () => {
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-zinc-950/85 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-lg shadow-2xl p-6 sm:p-8 flex flex-col">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-zinc-950/85 backdrop-blur-sm animate-modal-backdrop">
+      <div className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-lg shadow-2xl p-6 sm:p-8 flex flex-col animate-modal-pop">
         {/* Close Button */}
         <button
           type="button"

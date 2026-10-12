@@ -285,7 +285,7 @@ export const ProjectsModule: React.FC = () => {
             return (
               <div
                 key={project.id}
-                className="bg-zinc-900/70 border border-zinc-800 hover:border-indigo-500/40 rounded-xl p-5 sm:p-6 space-y-4 transition-all duration-200 shadow-sm group"
+                className="bg-zinc-900/70 border border-zinc-800 hover:border-indigo-500/40 rounded-xl p-5 sm:p-6 space-y-4 card-hover shadow-sm group"
               >
                 {/* Project Header Row */}
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">

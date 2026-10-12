@@ -86,8 +86,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-zinc-950/85 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl p-6 flex flex-col space-y-5">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-zinc-950/85 backdrop-blur-sm animate-modal-backdrop">
+      <div className="relative w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl p-6 flex flex-col space-y-5 animate-modal-pop">
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-zinc-850 pb-3">
           <div className="flex items-center gap-2.5">

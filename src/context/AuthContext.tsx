@@ -31,13 +31,80 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const LOCAL_USER_KEY = 'agenda_local_auth_user';
+export const LOCAL_USER_KEY = 'agenda_local_auth_user';
+
+export const getCachedAuthUser = (): {
+  user: User | null;
+  session: Session | null;
+  profile: UserProfile | null;
+} => {
+  if (typeof window === 'undefined') {
+    return { user: null, session: null, profile: null };
+  }
+
+  // 1. Check local fallback storage
+  try {
+    const local = localStorage.getItem(LOCAL_USER_KEY);
+    if (local) {
+      const parsed = JSON.parse(local);
+      if (parsed?.user) {
+        return {
+          user: parsed.user as User,
+          session: null,
+          profile: parsed.profile ?? null,
+        };
+      }
+    }
+  } catch {
+    // Ignore parsing errors
+  }
+
+  // 2. Check Supabase localStorage tokens
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (
+        key &&
+        (key.startsWith('sb-') || key.includes('supabase.auth.token') || key.includes('auth-token'))
+      ) {
+        const item = localStorage.getItem(key);
+        if (item) {
+          const parsed = JSON.parse(item);
+          const userObj = parsed?.user || parsed?.currentSession?.user;
+          if (userObj && userObj.id) {
+            const profileObj: UserProfile = {
+              id: userObj.id,
+              email: userObj.email || '',
+              full_name:
+                userObj.user_metadata?.full_name ||
+                userObj.email?.split('@')[0] ||
+                'User',
+            };
+            const sessionObj = parsed?.access_token
+              ? (parsed as Session)
+              : parsed?.currentSession || null;
+            return {
+              user: userObj as User,
+              session: sessionObj,
+              profile: profileObj,
+            };
+          }
+        }
+      }
+    }
+  } catch {
+    // Ignore parsing errors
+  }
+
+  return { user: null, session: null, profile: null };
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const initialCached = getCachedAuthUser();
+  const [user, setUser] = useState<User | null>(() => initialCached.user);
+  const [session, setSession] = useState<Session | null>(() => initialCached.session);
+  const [profile, setProfile] = useState<UserProfile | null>(() => initialCached.profile);
+  const [isLoading, setIsLoading] = useState<boolean>(() => !initialCached.user);
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
