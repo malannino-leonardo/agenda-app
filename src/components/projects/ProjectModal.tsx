@@ -22,9 +22,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [clientId, setClientId] = useState<string>('');
-  const [budget, setBudget] = useState<number | ''>(0);
-  const [quotedPrice, setQuotedPrice] = useState<number | ''>(0);
-  const [invoicedAmount, setInvoicedAmount] = useState<number | ''>(0);
+  const [budget, setBudget] = useState<string>('0');
+  const [quotedPrice, setQuotedPrice] = useState<string>('0');
+  const [invoicedAmount, setInvoicedAmount] = useState<string>('0');
   const [status, setStatus] = useState<ProjectStatus>('in_progress');
   const [deadline, setDeadline] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -34,9 +34,21 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setTitle(projectToEdit.title);
       setDescription(projectToEdit.description || '');
       setClientId(projectToEdit.client_id || '');
-      setBudget(projectToEdit.budget);
-      setQuotedPrice(projectToEdit.quoted_price);
-      setInvoicedAmount(projectToEdit.invoiced_amount);
+      setBudget(
+        projectToEdit.budget !== undefined && projectToEdit.budget !== null
+          ? String(projectToEdit.budget)
+          : '0'
+      );
+      setQuotedPrice(
+        projectToEdit.quoted_price !== undefined && projectToEdit.quoted_price !== null
+          ? String(projectToEdit.quoted_price)
+          : '0'
+      );
+      setInvoicedAmount(
+        projectToEdit.invoiced_amount !== undefined && projectToEdit.invoiced_amount !== null
+          ? String(projectToEdit.invoiced_amount)
+          : '0'
+      );
       setStatus(projectToEdit.status);
       setDeadline(
         projectToEdit.deadline ? projectToEdit.deadline.split('T')[0] : ''
@@ -45,9 +57,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setTitle('');
       setDescription('');
       setClientId('');
-      setBudget(0);
-      setQuotedPrice(0);
-      setInvoicedAmount(0);
+      setBudget('0');
+      setQuotedPrice('0');
+      setInvoicedAmount('0');
       setStatus('in_progress');
       setDeadline('');
     }
@@ -65,13 +77,18 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       return;
     }
 
+    const parseMoney = (val: string) => {
+      const n = Number(val);
+      return isNaN(n) ? 0 : n;
+    };
+
     const payload = {
       title: title.trim(),
       description: description.trim() || undefined,
       client_id: clientId ? clientId : null,
-      budget: Number(budget) || 0,
-      quoted_price: Number(quotedPrice) || 0,
-      invoiced_amount: Number(invoicedAmount) || 0,
+      budget: parseMoney(budget),
+      quoted_price: parseMoney(quotedPrice),
+      invoiced_amount: parseMoney(invoicedAmount),
       status,
       deadline: deadline ? new Date(deadline).toISOString() : undefined,
     };
@@ -178,10 +195,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               </label>
               <input
                 type="number"
-                min="0"
-                step="50"
+                step="any"
                 value={budget}
-                onChange={(e) => setBudget(e.target.value === '' ? '' : Number(e.target.value))}
+                onChange={(e) => setBudget(e.target.value)}
                 className="w-full px-2.5 py-1.5 bg-zinc-950 border border-zinc-800 rounded text-zinc-100 focus:border-indigo-500/80 transition-colors"
               />
             </div>
@@ -191,10 +207,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               </label>
               <input
                 type="number"
-                min="0"
-                step="50"
+                step="any"
                 value={quotedPrice}
-                onChange={(e) => setQuotedPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                onChange={(e) => setQuotedPrice(e.target.value)}
                 className="w-full px-2.5 py-1.5 bg-zinc-950 border border-zinc-800 rounded text-zinc-100 focus:border-indigo-500/80 transition-colors"
               />
             </div>
@@ -204,10 +219,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               </label>
               <input
                 type="number"
-                min="0"
-                step="50"
+                step="any"
                 value={invoicedAmount}
-                onChange={(e) => setInvoicedAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                onChange={(e) => setInvoicedAmount(e.target.value)}
                 className="w-full px-2.5 py-1.5 bg-zinc-950 border border-zinc-800 rounded text-zinc-100 focus:border-indigo-500/80 transition-colors"
               />
             </div>

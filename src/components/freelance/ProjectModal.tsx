@@ -66,14 +66,19 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     e.preventDefault();
     if (!title.trim()) return;
 
+    const parseMoney = (val: string) => {
+      const n = Number(val);
+      return isNaN(n) ? 0 : n;
+    };
+
     if (initialProject) {
       updateProject(initialProject.id, {
         title: title.trim(),
         description: description.trim() || undefined,
         client_id: clientId || undefined,
-        budget: parseFloat(budget) || 0,
-        quoted_price: parseFloat(quotedPrice) || 0,
-        invoiced_amount: parseFloat(invoicedAmount) || 0,
+        budget: parseMoney(budget),
+        quoted_price: parseMoney(quotedPrice),
+        invoiced_amount: parseMoney(invoicedAmount),
         status,
         deadline: deadline || undefined,
       });
@@ -82,9 +87,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         title: title.trim(),
         description: description.trim() || undefined,
         client_id: clientId || undefined,
-        budget: parseFloat(budget) || 0,
-        quoted_price: parseFloat(quotedPrice) || 0,
-        invoiced_amount: parseFloat(invoicedAmount) || 0,
+        budget: parseMoney(budget),
+        quoted_price: parseMoney(quotedPrice),
+        invoiced_amount: parseMoney(invoicedAmount),
         status,
         deadline: deadline || undefined,
       });
@@ -164,8 +169,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               </label>
               <input
                 type="number"
-                min="0"
-                step="100"
+                step="any"
                 value={quotedPrice}
                 onChange={(e) => setQuotedPrice(e.target.value)}
                 className="w-full px-3 py-2 text-sm bg-zinc-900 border border-zinc-800 rounded text-zinc-100 focus:border-zinc-500 transition-colors"
@@ -177,8 +181,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               </label>
               <input
                 type="number"
-                min="0"
-                step="100"
+                step="any"
                 value={invoicedAmount}
                 onChange={(e) => setInvoicedAmount(e.target.value)}
                 className="w-full px-3 py-2 text-sm bg-zinc-900 border border-zinc-800 rounded text-zinc-100 focus:border-zinc-500 transition-colors"
@@ -190,8 +193,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               </label>
               <input
                 type="number"
-                min="0"
-                step="100"
+                step="any"
                 value={budget}
                 onChange={(e) => setBudget(e.target.value)}
                 className="w-full px-3 py-2 text-sm bg-zinc-900 border border-zinc-800 rounded text-zinc-100 focus:border-zinc-500 transition-colors"

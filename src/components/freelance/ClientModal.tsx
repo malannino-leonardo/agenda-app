@@ -165,8 +165,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
               </label>
               <input
                 type="number"
-                min="0"
-                step="5"
+                step="any"
                 value={hourlyRate}
                 onChange={(e) => setHourlyRate(e.target.value)}
                 placeholder="65"
