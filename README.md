@@ -1,43 +1,53 @@
 # Agenda
 
-A production-ready, minimalist workspace application for managing freelance client projects, web development deliverables, and university coursework.
-
-Designed with a human-crafted Swiss aesthetic: generous whitespace, high-contrast typography, subtle neutral palettes (zinc / slate), and zero AI tropes (no badges, no emojis, no sparkles, no gradients).
-
----
+A minimalist workspace application for managing daily schedules, tasks, client projects, and freelance deliverables.
 
 ## Core Features
 
-### 1. Dual-Scope Architecture
-- **Freelance Module**:
-  - Client Management: Complete profiles with company, contact info, hourly rates, and notes.
-  - Project Workspace: Projects linked to clients with budgets, quotes, and nested tasks.
-  - Financial Tracking: Total quoted, invoiced, and pending payment metrics.
-- **University Module**:
-  - Courses & Exams: Course codes, professors, credits (CFU), exam dates, and target grades.
-  - Course Tasks & Study Goals: Preparation milestones and assignment tracking.
-- **Daily Agenda**:
-  - Quick-capture input for daily tasks not tied to a specific client or course.
+### 1. Daily Agenda & Scheduling
+- **Multi-View Calendar**: Switch between Day, Week, and Month agenda views.
+- **Multiple Calendars**: Create and color-code distinct calendars for different contexts.
+- **Calendar Sharing & Collaboration**: Share calendars with collaborators or guests via view/edit permissions.
+- **Quick-Capture Input**: Rapidly schedule time-blocked agenda items and daily tasks.
 
-### 2. Task Management & Quick Interactions
-- **Nested Tasks**: Deeply hierarchical task structures (main tasks with inner todos/sub-tasks).
-- **Icon-Only Quick Complete**: Instant completion toggle with sleek checkmark button.
-- **State Organization**: Clear separation between "Stuff to do" (pending/in progress) and "Stuff already done" (completed).
+### 2. Task Management & Hierarchies
+- **Nested Tasks**: Deeply hierarchical task structures (parent tasks with inner sub-tasks and todos).
+- **All Tasks View**: Unified task list with scope filtering (Agenda, Projects, Freelance).
+- **Quick Complete**: Instant completion toggle with dedicated checkmark controls.
+- **State Organization**: Clear separation between active tasks (pending/in progress) and completed items.
+- **Priorities & Dates**: Priority indicators (low, medium, high) and due date tracking.
 
-### 3. Internationalization (i18n)
+### 3. Projects Workspace
+- **Client Association**: Link projects directly to clients in your directory.
+- **Status Pipeline**: Track project progress through pending, in progress, completed, and archived stages.
+- **Financial Details**: Record budgets, custom quoted prices, and invoiced amounts.
+- **Project Tasks**: Manage deliverables and task breakdowns within each project context.
+
+### 4. Client Directory
+- **Client Profiles**: Contact details, company information, default hourly rates, currency, and notes.
+- **Financial Overview**: View associated projects and financial summaries per client.
+
+### 5. Appearance & Customization
+- **Theme Selection**: Seamless switching between dark and light themes.
+- **Vector UI Scaling**: Crisp, subpixel UI scale adjustments with dedicated presets (90% to 130%) and instant reset.
+- **Interactive Blobatar**: Dynamic user avatar with mouse-tracking gaze interactions.
+
+### 6. Internationalization (i18n)
 - Built-in support for **English** and **Italian**.
-- Language switcher in the navigation bar with immediate UI update and persistence.
+- Language switcher in the navigation bar with immediate UI updates and persistence.
 
----
+### 7. PWA & Offline Support
+- **Standalone PWA**: Installable on desktop and mobile platforms with safe-area support.
+- **Local-First Architecture**: Automatic offline persistence with Supabase cloud synchronization.
+
 
 ## Technical Stack
 
 - **Frontend**: React 18, TypeScript, Tailwind CSS, Lucide React icons.
 - **Build Tool**: Vite.
-- **Database**: Supabase (PostgreSQL) with Row-Level Security (RLS), foreign keys, and cascading deletes.
+- **Database & Auth**: Supabase (PostgreSQL) with Row-Level Security (RLS), foreign keys, and cascading deletes.
 - **Storage**: Local-first storage fallback allowing out-of-the-box offline functionality.
 
----
 
 ## Getting Started
 

@@ -3,18 +3,17 @@ import {
   Sun,
   Moon,
   ZoomIn,
-  ZoomOut,
   RotateCcw,
   SlidersHorizontal,
   Check,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
-import { useUiScale, UI_SCALE_PRESETS, MIN_UI_SCALE, MAX_UI_SCALE } from '../../context/UiScaleContext';
+import { useUiScale, UI_SCALE_PRESETS } from '../../context/UiScaleContext';
 import { useTranslation } from '../../context/LanguageContext';
 
 export const AppearanceSection: React.FC = () => {
   const { theme, setTheme } = useTheme();
-  const { scale, setScale, resetScale, increaseScale, decreaseScale } = useUiScale();
+  const { scale, setScale, resetScale } = useUiScale();
   const { t } = useTranslation();
 
   return (
@@ -142,56 +141,7 @@ export const AppearanceSection: React.FC = () => {
           </div>
         </div>
 
-        {/* Fine-Tuning Slider & Steppers */}
-        <div className="space-y-2 bg-zinc-950/70 p-3.5 rounded-lg border border-zinc-850">
-          <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400">
-            <span>Fine-tune scale</span>
-            <span>{scale}% of standard</span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={decreaseScale}
-              disabled={scale <= MIN_UI_SCALE}
-              className="p-1.5 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed rounded transition-colors"
-              title={t.appearance.zoomOut}
-            >
-              <ZoomOut className="w-3.5 h-3.5" />
-            </button>
-
-            <div className="flex-1 px-1">
-              <input
-                type="range"
-                min={MIN_UI_SCALE}
-                max={MAX_UI_SCALE}
-                step={5}
-                value={scale}
-                onChange={(e) => setScale(Number(e.target.value))}
-                className="w-full"
-                aria-label={t.appearance.uiScaleTitle}
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={increaseScale}
-              disabled={scale >= MAX_UI_SCALE}
-              className="p-1.5 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed rounded transition-colors"
-              title={t.appearance.zoomIn}
-            >
-              <ZoomIn className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 pt-1">
-            <span>{MIN_UI_SCALE}% (Min)</span>
-            <span>100% (Standard)</span>
-            <span>{MAX_UI_SCALE}% (Max)</span>
-          </div>
-        </div>
-
-        {/* Live Preview Card (No badges) */}
+        {/* Live Preview Card */}
         <div className="p-3 bg-zinc-950/40 border border-dashed border-zinc-800 rounded-lg space-y-2">
           <div className="text-[10px] font-mono uppercase text-zinc-500">
             Preview at {scale}%
@@ -205,7 +155,7 @@ export const AppearanceSection: React.FC = () => {
                 Due Today at 14:30
               </div>
             </div>
-            <div className="text-xs font-mono text-zinc-400 border border-zinc-800 px-2 py-1 rounded">
+            <div className="text-xs font-mono text-zinc-500">
               Active
             </div>
           </div>

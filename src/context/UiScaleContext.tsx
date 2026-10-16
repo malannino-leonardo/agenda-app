@@ -43,8 +43,12 @@ const applyScaleToDOM = (scaleValue: number) => {
     root.style.fontSize = `${scaleValue}%`;
   }
 
-  // Notify any canvas/geometry-aware components
-  window.dispatchEvent(new Event('resize'));
+  // Notify any canvas/geometry-aware components safely on next frame
+  if (typeof window !== 'undefined') {
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
+  }
 };
 
 export const UiScaleProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
