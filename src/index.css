@@ -18,14 +18,39 @@
     --accent: #e4e4e7;
   }
 
+  html {
+    /* Prevent mobile webview/PWA text inflation that blurs fonts on subpixel fractions */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* Disable faux synthetic bolding/slanting that causes fuzzy glyph strokes */
+    font-synthesis: none;
+    -webkit-font-synthesis: none;
+  }
+
   body {
     margin: 0;
     padding: 0;
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    /* Windows/Linux LCD screens: Enable ClearType subpixel rendering for maximum sharpness */
+    -webkit-font-smoothing: subpixel-antialiased;
+    -moz-osx-font-smoothing: auto;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* macOS / iOS and high-DPI (Retina) screens: antialiased produces crisp strokes without blooming */
+  @supports (-webkit-touch-callout: none) {
+    body {
+      -webkit-font-smoothing: antialiased;
+    }
+  }
+
+  @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    body {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
   }
 
   /* Refined selection highlight without AI gradients */

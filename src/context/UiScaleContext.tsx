@@ -33,15 +33,13 @@ const applyScaleToDOM = (scaleValue: number) => {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
 
+  // Always remove CSS zoom as it causes bitmap blur and disables subpixel font hinting
+  root.style.removeProperty('zoom');
+
   if (scaleValue === 100) {
-    root.style.removeProperty('zoom');
-    root.style.removeProperty('font-size');
-  } else if ('zoom' in (root.style as unknown as Record<string, unknown>)) {
-    // Modern engines supporting CSS zoom
-    (root.style as unknown as { zoom: string }).zoom = String(scaleValue / 100);
     root.style.removeProperty('font-size');
   } else {
-    // Fallback for older engines
+    // Scale root font-size: cleanly rescales all rem units with crisp vector glyph rendering
     root.style.fontSize = `${scaleValue}%`;
   }
 

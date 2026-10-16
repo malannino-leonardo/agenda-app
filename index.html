@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
     <title>Agenda | Minimalist Workspace</title>
     <meta name="description" content="Unified workspace for tasks, scheduling agenda, and freelance projects." />
     <link rel="manifest" href="/manifest.json" />
@@ -11,9 +11,6 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     <script>
       (function() {
         try {
@@ -22,22 +19,22 @@
             document.documentElement.classList.remove('dark');
             document.documentElement.classList.add('light');
           }
+          // Remove any legacy bitmap zoom if present
+          if ('zoom' in document.documentElement.style) {
+            document.documentElement.style.removeProperty('zoom');
+          }
           var scale = localStorage.getItem('agenda_ui_scale');
           if (scale) {
             var val = parseInt(scale, 10);
             if (!isNaN(val) && val >= 85 && val <= 140 && val !== 100) {
-              if ('zoom' in document.documentElement.style) {
-                document.documentElement.style.zoom = (val / 100).toString();
-              } else {
-                document.documentElement.style.fontSize = val + '%';
-              }
+              document.documentElement.style.fontSize = val + '%';
             }
           }
         } catch (e) {}
       })();
     </script>
   </head>
-  <body class="bg-zinc-950 text-zinc-100 antialiased selection:bg-zinc-800 selection:text-zinc-100">
+  <body class="bg-zinc-950 text-zinc-100 selection:bg-zinc-800 selection:text-zinc-100">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
