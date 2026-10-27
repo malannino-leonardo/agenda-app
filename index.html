@@ -3,6 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180x180.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon-167x167.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152x152.png" />
+    <meta name="apple-mobile-web-app-title" content="Agenda" />
+    <meta name="application-name" content="Agenda" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
     <title>Agenda | Minimalist Workspace</title>
     <meta name="description" content="Unified workspace for tasks, scheduling agenda, and freelance projects." />
@@ -10,14 +18,20 @@
     <meta name="theme-color" content="#09090b" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <script>
       (function() {
         try {
           var theme = localStorage.getItem('agenda_theme');
+          var metaThemeColor = document.querySelector('meta[name="theme-color"]');
           if (theme === 'light') {
             document.documentElement.classList.remove('dark');
             document.documentElement.classList.add('light');
+            document.documentElement.style.colorScheme = 'light';
+            if (metaThemeColor) metaThemeColor.setAttribute('content', '#ffffff');
+          } else {
+            document.documentElement.style.colorScheme = 'dark';
+            if (metaThemeColor) metaThemeColor.setAttribute('content', '#09090b');
           }
           // Remove any legacy bitmap zoom if present
           if ('zoom' in document.documentElement.style) {

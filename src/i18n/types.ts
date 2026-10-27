@@ -27,6 +27,7 @@ export interface Translations {
     overview: string;
     installApp: string;
     installPrompt: string;
+    appInstalled: string;
   };
   nav: {
     allTasks: string;
@@ -200,6 +201,7 @@ export interface Translations {
     heroTitle: string;
     heroSubtitle: string;
     getStarted: string;
+    openDashboard: string;
     signIn: string;
     liveDemo: string;
     featuresTitle: string;
@@ -228,6 +230,24 @@ export interface Translations {
     privacy: string;
     terms: string;
     notFound: string;
+  };
+  installGuide: {
+    title: string;
+    subtitle: string;
+    alreadyInstalledTitle: string;
+    alreadyInstalledDesc: string;
+    iosTitle: string;
+    iosDesc: string;
+    iosStep1Title: string;
+    iosStep1Desc: string;
+    iosStep2Title: string;
+    iosStep2Desc: string;
+    iosStep3Title: string;
+    iosStep3Desc: string;
+    macSafariTitle: string;
+    macSafariDesc: string;
+    macSafariStep: string;
+    close: string;
   };
 }
 

@@ -4,7 +4,6 @@ import { useAuth } from './context/AuthContext';
 import { useTranslation } from './context/LanguageContext';
 import { Header } from './components/common/Header';
 import { Sidebar } from './components/common/Sidebar';
-import { DesktopInstallBanner } from './components/common/DesktopInstallBanner';
 import { AuthModal } from './components/auth/AuthModal';
 import { GuestAccessModal } from './components/agenda/GuestAccessModal';
 import { DailyAgendaModule } from './components/agenda/DailyAgendaModule';
@@ -101,11 +100,8 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans selection:bg-indigo-500/25 selection:text-indigo-100 overflow-hidden">
-      {/* Desktop App Installation Banner */}
-      <DesktopInstallBanner />
-
-      {/* Top Header */}
+    <div className="min-h-[100dvh] h-[100dvh] bg-zinc-950 text-zinc-100 flex flex-col font-sans selection:bg-indigo-500/25 selection:text-indigo-100 overflow-hidden pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]">
+      {/* Top Header with iOS safe area handling */}
       <Header onOpenNewTask={() => setIsGlobalTaskModalOpen(true)} />
 
       {/* Main Layout Area */}
@@ -114,7 +110,11 @@ export const App: React.FC = () => {
         {user && activeModule !== '404' && activeModule !== 'home' && <Sidebar />}
 
         {/* Dynamic Workspace Content */}
-        <main className="flex-1 overflow-y-auto p-3 sm:p-6 md:p-8 max-w-7xl mx-auto w-full pb-24 md:pb-8">
+        <main className={`flex-1 overflow-y-auto p-3 sm:p-6 md:p-8 max-w-7xl mx-auto w-full md:pb-8 ${
+          user && activeModule !== '404' && activeModule !== 'home'
+            ? 'pb-[max(6rem,calc(env(safe-area-inset-bottom,0px)+5rem))]'
+            : 'pb-[max(2rem,calc(env(safe-area-inset-bottom,0px)+1.5rem))]'
+        }`}>
           {renderContent()}
         </main>
       </div>

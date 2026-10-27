@@ -5,16 +5,26 @@ import {
   Briefcase,
   ArrowRight,
   Eye,
-  Mail,
+  Download,
+  Check,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from '../../context/LanguageContext';
 import { useApp } from '../../context/AppContext';
+import { usePwaInstall } from '../../hooks/usePwaInstall';
+import { InstallAppModal } from '../common/InstallAppModal';
 
 export const PlatformPresentation: React.FC = () => {
   const { user, openSignIn, openSignUp } = useAuth();
   const { t } = useTranslation();
-  const { setActiveModule, openGuestAccess } = useApp();
+  const { setActiveModule } = useApp();
+  const {
+    isStandalone,
+    isModalOpen,
+    setIsModalOpen,
+    platform,
+    handleInstallClick,
+  } = usePwaInstall();
 
   const features = [
     {
@@ -51,44 +61,36 @@ export const PlatformPresentation: React.FC = () => {
           {t.presentation.heroSubtitle}
         </p>
 
-        {/* Hero Actions */}
-        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-          {user ? (
-            <button
-              type="button"
-              onClick={() => setActiveModule('agenda')}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-zinc-100 hover:bg-zinc-300 text-zinc-950 font-medium text-xs font-mono uppercase tracking-wider rounded transition-colors shadow-lg"
-            >
-              <span>Open Workspace</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={openSignUp}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-zinc-100 hover:bg-zinc-300 text-zinc-950 font-medium text-xs font-mono uppercase tracking-wider rounded transition-colors shadow-lg"
-              >
-                <span>{t.presentation.getStarted}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={openSignIn}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 font-medium text-xs font-mono uppercase tracking-wider rounded transition-colors"
-              >
-                <span>{t.presentation.signIn}</span>
-              </button>
-              <button
-                type="button"
-                onClick={openGuestAccess}
-                className="inline-flex items-center gap-2 px-5 py-3 bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 text-zinc-300 font-medium text-xs font-mono uppercase tracking-wider rounded transition-colors"
-              >
-                <Mail className="w-4 h-4 text-zinc-400" />
-                <span>View Shared Calendar</span>
-              </button>
-            </>
-          )}
+        {/* Hero Actions: Only Two Main Buttons */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          {/* Button 1: Open Dashboard */}
+          <button
+            type="button"
+            onClick={() => (user ? setActiveModule('agenda') : openSignIn())}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-zinc-100 hover:bg-zinc-300 text-zinc-950 font-medium text-xs font-mono uppercase tracking-wider rounded transition-colors shadow-lg"
+          >
+            <span>{t.presentation.openDashboard}</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+
+          {/* Button 2: Install App */}
+          <button
+            type="button"
+            onClick={handleInstallClick}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-100 font-medium text-xs font-mono uppercase tracking-wider rounded transition-colors shadow-sm"
+          >
+            {isStandalone ? (
+              <>
+                <Check className="w-4 h-4 text-emerald-400" />
+                <span>{t.common.appInstalled}</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4 text-zinc-300" />
+                <span>{t.common.installApp}</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 
@@ -181,6 +183,14 @@ export const PlatformPresentation: React.FC = () => {
           </a>
         </div>
       </footer>
+
+      {/* Cross-Platform Installation Guide Modal */}
+      <InstallAppModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        platform={platform}
+        isStandalone={isStandalone}
+      />
     </div>
   );
 };

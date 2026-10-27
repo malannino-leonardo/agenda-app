@@ -47,6 +47,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const metaThemeColor = document.querySelector('meta[name="theme-color"]');
       if (metaThemeColor) metaThemeColor.setAttribute('content', '#ffffff');
     }
+    const metaStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (metaStatusBar) metaStatusBar.setAttribute('content', 'default');
   }, [theme]);
 
   const toggleTheme = () => {

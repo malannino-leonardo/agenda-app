@@ -67,8 +67,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewTask }) => {
   }, [isDropdownOpen]);
 
   return (
-    <header className="sticky top-0 z-30 h-14 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-850 px-3 sm:px-6 md:px-8 flex items-center justify-between gap-2 sm:gap-4">
-      {/* Brand title & dynamic section breadcrumb (breadcrumb hidden on mobile for clean fit) */}
+    <header className="sticky top-0 z-30 pt-[env(safe-area-inset-top,0px)] bg-zinc-950/90 backdrop-blur-md border-b border-zinc-850 px-3 sm:px-6 md:px-8">
+      <div className="h-14 flex items-center justify-between gap-2 sm:gap-4">
+        {/* Brand title & dynamic section breadcrumb (breadcrumb hidden on mobile for clean fit) */}
       <div
         onClick={navigateToHome}
         className="flex items-center gap-2 sm:gap-3 cursor-pointer select-none group shrink-0"
@@ -266,6 +267,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewTask }) => {
             </button>
           </div>
         )}
+      </div>
       </div>
     </header>
   );
