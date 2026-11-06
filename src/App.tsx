@@ -5,7 +5,8 @@ import { useTranslation } from './context/LanguageContext';
 import { Header } from './components/common/Header';
 import { Sidebar } from './components/common/Sidebar';
 import { AuthModal } from './components/auth/AuthModal';
-import { GuestAccessModal } from './components/agenda/GuestAccessModal';
+import { InvitePage } from './components/agenda/InvitePage';
+import { Toaster } from './components/common/Toaster';
 import { DailyAgendaModule } from './components/agenda/DailyAgendaModule';
 import { AllTasksView } from './components/tasks/AllTasksView';
 import { ProjectsModule } from './components/projects/ProjectsModule';
@@ -27,7 +28,7 @@ import {
 import { NavigationModule } from './types';
 
 export const App: React.FC = () => {
-  const { activeModule, setActiveModule, guestEmail } = useApp();
+  const { activeModule, setActiveModule } = useApp();
   const { user, isLoading } = useAuth();
   const { t } = useTranslation();
   const [isGlobalTaskModalOpen, setIsGlobalTaskModalOpen] = useState(false);
@@ -38,11 +39,11 @@ export const App: React.FC = () => {
       const protectedModules: NavigationModule[] = ['tasks', 'projects', 'clients'];
       if (protectedModules.includes(activeModule)) {
         setActiveModule('home');
-      } else if (activeModule === 'agenda' && !guestEmail) {
+      } else if (activeModule === 'agenda') {
         setActiveModule('home');
       }
     }
-  }, [isLoading, user, guestEmail, activeModule, setActiveModule]);
+  }, [isLoading, user, activeModule, setActiveModule]);
 
   const mobileNavItems: { id: NavigationModule; label: string; icon: React.ElementType }[] = [
     { id: 'agenda', label: t.nav.agenda, icon: Calendar },
@@ -58,6 +59,8 @@ export const App: React.FC = () => {
     if (activeModule === 'terms') return <TermsOfServicePage />;
     if (activeModule === '404') return <NotFoundPage />;
     if (activeModule === 'account') return <AccountPage />;
+    // Invitation links work for signed-out visitors too
+    if (activeModule === 'invite') return <InvitePage />;
 
     // When auth is still loading and user is not yet known:
     // Prevent the landing page (index) from flashing on reload of non-index pages!
@@ -76,11 +79,8 @@ export const App: React.FC = () => {
       return <PlatformPresentation />;
     }
 
-    // If user is not authenticated, check if guest has access to agenda
+    // Signed-out visitors only see the landing page
     if (!user) {
-      if (guestEmail && activeModule === 'agenda') {
-        return <DailyAgendaModule />;
-      }
       return <PlatformPresentation />;
     }
 
@@ -107,7 +107,7 @@ export const App: React.FC = () => {
       {/* Main Layout Area */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Sidebar: Only visible when user is logged in AND not on 404 or home page */}
-        {user && activeModule !== '404' && activeModule !== 'home' && <Sidebar />}
+        {user && activeModule !== '404' && activeModule !== 'home' && activeModule !== 'invite' && <Sidebar />}
 
         {/* Dynamic Workspace Content */}
         <main className={`flex-1 overflow-y-auto p-3 sm:p-6 md:p-8 max-w-7xl mx-auto w-full md:pb-8 ${
@@ -154,8 +154,8 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* Guest Calendar Access Modal */}
-      <GuestAccessModal />
+      <Toaster />
+
 
       {/* Auth Modal (Sign In / Sign Up with Interactive Blobatar) */}
       <AuthModal />

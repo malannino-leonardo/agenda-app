@@ -13,7 +13,8 @@ const DEFAULT_CALENDAR: Calendar = {
   color: '#6366f1',
   description: 'Main personal calendar',
   is_default: true,
-  shares: [],
+  members: [],
+  invites: [],
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 };
@@ -56,5 +57,13 @@ export const saveStoredData = (
     }
   } catch {
     // Silent fail for storage limits
+  }
+};
+
+export const clearStoredData = () => {
+  try {
+    Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
+  } catch {
+    // Silent fail
   }
 };

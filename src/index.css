@@ -776,3 +776,27 @@ body {
 }
 
 
+
+/* =========================================================================
+   Calendar surfaces & inline table fields (light theme)
+   ========================================================================= */
+html.light .cal-surface {
+  background-color: #ffffff !important;
+}
+
+html.light .cal-head {
+  background-color: #fafafa !important;
+}
+
+html.light .cal-today {
+  background-color: rgba(99, 102, 241, 0.07) !important;
+}
+
+html.light input.inline-field:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(:focus) {
+  background-color: transparent !important;
+  border-color: transparent !important;
+}
+
+html.light input.inline-field:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(:focus):hover {
+  border-color: #d4d4d8 !important;
+}

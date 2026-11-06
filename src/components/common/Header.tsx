@@ -27,9 +27,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewTask }) => {
     navigateToHome,
     activeModule,
     tasks,
-    guestEmail,
-    setGuestEmail,
-    openGuestAccess,
+    pendingInvites,
   } = useApp();
   const { language, setLanguage, t } = useTranslation();
   const { user, profile, openSignIn, signOut, isLoading } = useAuth();
@@ -129,6 +127,22 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewTask }) => {
             IT
           </button>
         </div>
+
+        {/* Pending calendar invitations */}
+        {user && pendingInvites.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setActiveModule('agenda')}
+            className="relative p-2 text-indigo-400 hover:text-indigo-300 border border-indigo-500/30 bg-indigo-950/30 rounded transition-colors"
+            title={t.cal.pendingInvitesNudge.replace('{n}', String(pendingInvites.length))}
+            aria-label={t.cal.pendingInvitesNudge.replace('{n}', String(pendingInvites.length))}
+          >
+            <Mail className="w-3.5 h-3.5" />
+            <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-indigo-500 text-white text-[10px] font-mono flex items-center justify-center">
+              {pendingInvites.length}
+            </span>
+          </button>
+        )}
 
         {/* Global New Task CTA (only if authenticated) */}
         {user && (
@@ -232,31 +246,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewTask }) => {
           <div className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 animate-pulse" />
         ) : (
           <div className="flex items-center gap-2">
-            {guestEmail ? (
-              <div className="flex items-center gap-1.5 text-xs font-mono">
-                <span className="text-zinc-400 hidden sm:inline">Guest:</span>
-                <span className="text-zinc-200 font-semibold max-w-[110px] truncate" title={guestEmail}>
-                  {guestEmail}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setGuestEmail(null)}
-                  className="px-2 py-0.5 text-[10px] font-mono text-zinc-400 hover:text-zinc-200 border border-zinc-800 rounded transition-colors"
-                >
-                  Exit
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={openGuestAccess}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-700 bg-zinc-900/60 rounded transition-colors"
-              >
-                <Mail className="w-3.5 h-3.5 text-zinc-400" />
-                <span className="hidden sm:inline">Shared Calendar</span>
-              </button>
-            )}
-
             <button
               type="button"
               onClick={openSignIn}
