@@ -350,6 +350,8 @@ export interface Translations {
     descriptionLabel: string;
     dateTimeOptional: string;
     clearBoth: string;
+    showAdvanced: string;
+    hideAdvanced: string;
     time: string;
     allDayHint: string;
     duration: string;

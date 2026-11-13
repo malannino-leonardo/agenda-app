@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Plus,
   ChevronRight,
@@ -564,7 +565,7 @@ export const AllTasksView: React.FC = () => {
       </div>
 
       {/* Bulk actions */}
-      {selected.size > 0 && (
+      {selected.size > 0 && createPortal(
         <div className="fixed bottom-[max(5.5rem,calc(env(safe-area-inset-bottom,0px)+5rem))] md:bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-1.5rem)] max-w-2xl">
           <div className="flex flex-wrap items-center gap-2 px-3 py-2 bg-zinc-950 border border-zinc-700 rounded-lg shadow-2xl animate-modal-pop">
             <span className="text-xs font-mono text-zinc-200 mr-1">
@@ -604,7 +605,8 @@ export const AllTasksView: React.FC = () => {
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <ConfirmDialog

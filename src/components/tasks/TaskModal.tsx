@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Calendar as CalendarIcon, Clock, Trash2, Lock, Bell, Hourglass } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Clock, Trash2, Lock, Bell, Hourglass, ChevronDown } from 'lucide-react';
 import { Task, TaskScope, TaskPriority, TaskStatus } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { useTranslation } from '../../context/LanguageContext';
@@ -70,6 +70,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [duration, setDuration] = useState<string>('');
   const [remindBefore, setRemindBefore] = useState<string>('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const readOnly = Boolean(taskToEdit && !canEditTask(taskToEdit));
 
@@ -82,6 +83,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) return;
+    setShowAdvanced(Boolean(taskToEdit));
     if (taskToEdit) {
       setTitle(taskToEdit.title);
       setDescription(taskToEdit.description || '');
@@ -308,55 +310,68 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               <p className="text-[10px] font-mono text-zinc-500">{t.cal.allDayHint}</p>
             )}
 
-            {dueDate && dueTime && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[11px] font-mono text-zinc-400 mb-1 flex items-center gap-1.5">
-                    <Hourglass className="w-3 h-3 text-zinc-500" />
-                    <span>{t.cal.duration}</span>
-                  </label>
-                  <select
-                    disabled={readOnly}
-                    value={duration}
-                    onChange={(e) => setDuration(e.target.value)}
-                    className={selectBase}
-                  >
-                    <option value="">{t.cal.defaultDuration}</option>
-                    {DURATIONS.map((d) => (
-                      <option key={d} value={d}>
-                        {formatDuration(d)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[11px] font-mono text-zinc-400 mb-1 flex items-center gap-1.5">
-                    <Bell className="w-3 h-3 text-zinc-500" />
-                    <span>{t.cal.remindMe}</span>
-                  </label>
-                  <select
-                    disabled={readOnly}
-                    value={remindBefore}
-                    onChange={(e) => setRemindBefore(e.target.value)}
-                    className={selectBase}
-                  >
-                    <option value="">{t.cal.noReminder}</option>
-                    {REMINDERS.map((r) => (
-                      <option key={r} value={r}>
-                        {r === 0
-                          ? t.cal.atStart
-                          : r === 1440
-                          ? t.cal.dayBefore
-                          : r >= 60
-                          ? t.cal.hoursBefore.replace('{n}', String(r / 60))
-                          : t.cal.minutesBefore.replace('{n}', String(r))}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            )}
           </div>
+
+          <button
+            type="button"
+            onClick={() => setShowAdvanced((v) => !v)}
+            aria-expanded={showAdvanced}
+            className="inline-flex items-center gap-1.5 text-xs font-mono text-zinc-400 hover:text-zinc-200 transition-colors"
+          >
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+            {showAdvanced ? t.cal.hideAdvanced : t.cal.showAdvanced}
+          </button>
+
+          {showAdvanced && (
+          <div className="space-y-4">
+          {dueDate && dueTime && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-[11px] font-mono text-zinc-400 mb-1 flex items-center gap-1.5">
+                  <Hourglass className="w-3 h-3 text-zinc-500" />
+                  <span>{t.cal.duration}</span>
+                </label>
+                <select
+                  disabled={readOnly}
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                  className={selectBase}
+                >
+                  <option value="">{t.cal.defaultDuration}</option>
+                  {DURATIONS.map((d) => (
+                    <option key={d} value={d}>
+                      {formatDuration(d)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-[11px] font-mono text-zinc-400 mb-1 flex items-center gap-1.5">
+                  <Bell className="w-3 h-3 text-zinc-500" />
+                  <span>{t.cal.remindMe}</span>
+                </label>
+                <select
+                  disabled={readOnly}
+                  value={remindBefore}
+                  onChange={(e) => setRemindBefore(e.target.value)}
+                  className={selectBase}
+                >
+                  <option value="">{t.cal.noReminder}</option>
+                  {REMINDERS.map((r) => (
+                    <option key={r} value={r}>
+                      {r === 0
+                        ? t.cal.atStart
+                        : r === 1440
+                        ? t.cal.dayBefore
+                        : r >= 60
+                        ? t.cal.hoursBefore.replace('{n}', String(r / 60))
+                        : t.cal.minutesBefore.replace('{n}', String(r))}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
 
           {/* Calendar */}
           <div>
@@ -485,6 +500,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               ))}
             </select>
           </div>
+          </div>
+          )}
 
           {taskToEdit && creator && (
             <p className="text-[10px] font-mono text-zinc-500">
