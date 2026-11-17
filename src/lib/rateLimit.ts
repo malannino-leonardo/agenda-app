@@ -25,12 +25,28 @@ const getStorage = (): Storage | null => {
   return null;
 };
 
+/** localStorage can be edited by the user (or corrupted): never trust its shape. */
+const sanitizeRecord = (raw: unknown): RateLimitRecord => {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Partial<RateLimitRecord>;
+  const now = Date.now();
+  return {
+    timestamps: Array.isArray(r.timestamps)
+      ? r.timestamps.filter((t): t is number => typeof t === 'number' && Number.isFinite(t) && t <= now).slice(-200)
+      : [],
+    lockedUntil: typeof r.lockedUntil === 'number' && Number.isFinite(r.lockedUntil) ? r.lockedUntil : undefined,
+    consecutiveLockouts:
+      typeof r.consecutiveLockouts === 'number' && Number.isFinite(r.consecutiveLockouts)
+        ? Math.min(10, Math.max(0, Math.floor(r.consecutiveLockouts)))
+        : 0,
+  };
+};
+
 const getRecord = (key: string): RateLimitRecord => {
   const storage = getStorage();
   if (storage) {
     try {
       const raw = storage.getItem(STORAGE_PREFIX + key);
-      if (raw) return JSON.parse(raw) as RateLimitRecord;
+      if (raw) return sanitizeRecord(JSON.parse(raw));
     } catch {
       // Fallback to memory
     }
@@ -88,6 +104,48 @@ export const RATE_LIMIT_CONFIGS = {
     windowMs: 10 * 60 * 1000, // 10 minutes window
     baseCooldownMs: 2 * 60 * 1000, // 2 minutes cooldown
   },
+  SIGN_IN_DEVICE: {
+    // Caps credential stuffing across many e-mail addresses from the same browser
+    maxAttempts: 20,
+    windowMs: 10 * 60 * 1000,
+    baseCooldownMs: 2 * 60 * 1000,
+  },
+  TASK_UPDATE: {
+    maxAttempts: 80,
+    windowMs: 10 * 1000,
+    baseCooldownMs: 5 * 1000,
+  },
+  TASK_DELETE: {
+    maxAttempts: 40,
+    windowMs: 10 * 1000,
+    baseCooldownMs: 5 * 1000,
+  },
+  ENTITY_UPDATE: {
+    maxAttempts: 30,
+    windowMs: 10 * 1000,
+    baseCooldownMs: 5 * 1000,
+  },
+  ENTITY_DELETE: {
+    maxAttempts: 20,
+    windowMs: 10 * 1000,
+    baseCooldownMs: 5 * 1000,
+  },
+  CALENDAR_CREATE: {
+    maxAttempts: 5,
+    windowMs: 60 * 1000,
+    baseCooldownMs: 30 * 1000,
+  },
+  INVITE_CREATE: {
+    maxAttempts: 10,
+    windowMs: 60 * 1000,
+    baseCooldownMs: 30 * 1000,
+  },
+  INVITE_LOOKUP: {
+    // Slows token guessing against get_invite_info / accept_calendar_invite
+    maxAttempts: 15,
+    windowMs: 60 * 1000,
+    baseCooldownMs: 60 * 1000,
+  },
   TASK_CREATE: {
     maxAttempts: 25,
     windowMs: 10 * 1000, // 10 seconds window
@@ -132,10 +190,14 @@ export const checkRateLimit = (
 
   const remaining = Math.max(0, config.maxAttempts - activeTimestamps.length);
 
+  // Window full but no active lockout: report when the oldest attempt leaves the window
+  const retryAfterSeconds =
+    remaining > 0 ? 0 : Math.max(1, Math.ceil((Math.min(...activeTimestamps) + config.windowMs - now) / 1000));
+
   return {
     allowed: remaining > 0,
     remainingAttempts: remaining,
-    retryAfterSeconds: 0,
+    retryAfterSeconds,
   };
 };
 
@@ -165,7 +227,9 @@ export const recordRateLimitAttempt = (
   );
   activeTimestamps.push(now);
 
-  const consecutive = record.consecutiveLockouts || 0;
+  // Escalation decays after a quiet period (10 windows past the last lockout)
+  const quiet = record.lockedUntil !== undefined && now - record.lockedUntil > config.windowMs * 10;
+  const consecutive = quiet ? 0 : record.consecutiveLockouts || 0;
 
   if (activeTimestamps.length >= config.maxAttempts) {
     // Progressive cooldown: doubles with each consecutive lockout up to 10x
@@ -173,8 +237,9 @@ export const recordRateLimitAttempt = (
     const lockoutDuration = config.baseCooldownMs * multiplier;
     const lockedUntil = now + lockoutDuration;
 
+    // Start a fresh window once the cooldown ends (otherwise old attempts keep the user blocked)
     saveRecord(key, {
-      timestamps: activeTimestamps,
+      timestamps: [],
       lockedUntil,
       consecutiveLockouts: consecutive + 1,
     });
@@ -211,4 +276,17 @@ export const resetRateLimit = (key: string): void => {
     }
   }
   memoryStore.delete(key);
+};
+
+/**
+ * Convenience: check + record in one call. Returns the result of the check;
+ * when `allowed` is false the action must not proceed.
+ */
+export const consumeRateLimit = (
+  key: string,
+  config: RateLimitConfig
+): RateLimitCheckResult => {
+  const check = checkRateLimit(key, config);
+  if (!check.allowed) return check;
+  return recordRateLimitAttempt(key, config);
 };

@@ -159,7 +159,7 @@ begin
     );
     return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
@@ -173,9 +173,11 @@ create trigger on_auth_user_created
 create or replace function public.delete_user_account()
 returns void as $$
 begin
+    if auth.uid() is null then raise exception 'not_authenticated'; end if;
+    perform public.rate_limit_hit('delete_account:' || auth.uid()::text, 3, interval '1 hour');
     delete from auth.users where id = auth.uid();
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public;
 
 -- ------------------------------------------------------------------------------
 -- 8. CALENDARS (owner = calendars.user_id)
@@ -233,7 +235,7 @@ begin
     on conflict (id) do update set email = excluded.email;
     return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public;
 
 -- People who accepted an invite. permission: 'view' (read only) | 'edit' (read + write tasks)
 create table if not exists public.calendar_members (
@@ -341,7 +343,8 @@ create policy "Users can view own or collaborator profiles"
 drop policy if exists "Users can update own profile" on public.profiles;
 create policy "Users can update own profile"
     on public.profiles for update
-    using (auth.uid() = id);
+    using (auth.uid() = id)
+    with check (auth.uid() = id);
 
 drop policy if exists "Users can insert own profile" on public.profiles;
 create policy "Users can insert own profile"
@@ -474,6 +477,7 @@ declare
     inv public.calendar_invites;
 begin
     if auth.uid() is null then raise exception 'not_authenticated'; end if;
+    perform public.rate_limit_hit('create_invite:' || auth.uid()::text, 30, interval '1 minute');
     if p_permission not in ('view', 'edit') then raise exception 'invalid_permission'; end if;
     if not exists (select 1 from public.calendars where id = p_calendar and user_id = auth.uid()) then
         raise exception 'forbidden';
@@ -506,12 +510,17 @@ $$;
 -- Public (anon allowed): what is this invite about? Reveals no emails.
 create or replace function public.get_invite_info(p_token text)
 returns json
-language plpgsql stable security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = public as $$
 declare
     inv public.calendar_invites;
     cal public.calendars;
     v_owner text;
 begin
+    -- Anonymous endpoint: throttle token guessing per client address
+    perform public.rate_limit_hit('invite_info:' || public.request_client_key(), 30, interval '1 minute');
+    if p_token is null or p_token !~ '^[A-Za-z0-9_-]{16,128}$' then
+        return json_build_object('valid', false, 'reason', 'invite_invalid');
+    end if;
     select * into inv from public.calendar_invites where token = p_token;
     if not found then return json_build_object('valid', false, 'reason', 'invite_invalid'); end if;
     if inv.revoked then return json_build_object('valid', false, 'reason', 'invite_invalid'); end if;
@@ -548,6 +557,8 @@ declare
     v_existing text;
 begin
     if auth.uid() is null then raise exception 'not_authenticated'; end if;
+    perform public.rate_limit_hit('accept_invite:' || auth.uid()::text, 20, interval '1 minute');
+    if p_token is null or p_token !~ '^[A-Za-z0-9_-]{16,128}$' then raise exception 'invite_invalid'; end if;
 
     select * into inv from public.calendar_invites where token = p_token for update;
     if not found or inv.revoked then raise exception 'invite_invalid'; end if;
@@ -621,3 +632,306 @@ grant execute on function public.create_calendar_invite(uuid, text, text) to aut
 grant execute on function public.accept_calendar_invite(text) to authenticated;
 grant execute on function public.my_pending_invites() to authenticated;
 grant execute on function public.decline_calendar_invite(text) to authenticated;
+
+
+-- ------------------------------------------------------------------------------
+-- 13. SECURITY HARDENING (idempotent; safe to re-run)
+--     a) server-side rate limiting + per-user quotas   (cannot be bypassed from the browser)
+--     b) integrity: immutable ownership, cross-user references blocked
+--     c) data validation constraints (length / format / range)
+--     d) least-privilege grants
+-- ------------------------------------------------------------------------------
+
+-- 13a. Rate limiting ------------------------------------------------------------
+
+-- Hit log used by public.rate_limit_hit(). RLS on + no policies + no grants = only
+-- the SECURITY DEFINER functions below can touch it.
+create table if not exists public.rate_limit_events (
+    id bigserial primary key,
+    key text not null,
+    created_at timestamp with time zone not null default now()
+);
+create index if not exists idx_rate_limit_events_key_time on public.rate_limit_events(key, created_at desc);
+alter table public.rate_limit_events enable row level security;
+revoke all on public.rate_limit_events from anon, authenticated;
+revoke all on sequence public.rate_limit_events_id_seq from anon, authenticated;
+
+-- Best-effort client address (only used to throttle anonymous endpoints).
+create or replace function public.request_client_key()
+returns text
+language plpgsql stable set search_path = public as $$
+declare
+    h json;
+    ip text;
+begin
+    begin
+        h := nullif(current_setting('request.headers', true), '')::json;
+    exception when others then
+        h := null;
+    end;
+    ip := coalesce(
+        nullif(h ->> 'cf-connecting-ip', ''),
+        nullif(h ->> 'x-real-ip', ''),
+        nullif(trim(split_part(coalesce(h ->> 'x-forwarded-for', ''), ',', 1)), ''),
+        'unknown'
+    );
+    return left(ip, 64);
+end;
+$$;
+
+-- Sliding-window limiter: raises 'rate_limited' when more than p_max hits were
+-- recorded for p_key inside p_window. Note: because the exception aborts the
+-- calling transaction, only *allowed* calls leave a row behind, which is exactly
+-- what a sliding window needs.
+create or replace function public.rate_limit_hit(p_key text, p_max integer, p_window interval)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare
+    v_count integer;
+begin
+    if random() < 0.02 then
+        delete from public.rate_limit_events where created_at < now() - interval '1 day';
+    end if;
+
+    select count(*) into v_count
+      from public.rate_limit_events
+     where key = p_key and created_at > now() - p_window;
+
+    if v_count >= p_max then
+        raise exception 'rate_limited';
+    end if;
+
+    insert into public.rate_limit_events (key) values (p_key);
+end;
+$$;
+
+-- Per-user write throttle + total quota on INSERT.
+-- trigger args: (max inserts per minute, max rows per user)
+create index if not exists idx_tasks_user_created on public.tasks(user_id, created_at desc);
+create index if not exists idx_clients_user_created on public.clients(user_id, created_at desc);
+create index if not exists idx_projects_user_created on public.projects(user_id, created_at desc);
+create index if not exists idx_calendars_user_created on public.calendars(user_id, created_at desc);
+
+create or replace function public.guard_user_insert()
+returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+    v_per_minute integer;
+    v_total integer;
+    v_recent integer;
+    v_count integer;
+begin
+    -- Only throttle end users; migrations / service role (no JWT subject) are exempt
+    if auth.uid() is null then return new; end if;
+
+    v_per_minute := tg_argv[0]::integer;
+    v_total := tg_argv[1]::integer;
+
+    execute format(
+        'select count(*) from public.%I where user_id = $1 and created_at > now() - interval ''1 minute''',
+        tg_table_name
+    ) into v_recent using new.user_id;
+    if v_recent >= v_per_minute then raise exception 'rate_limited'; end if;
+
+    execute format('select count(*) from public.%I where user_id = $1', tg_table_name)
+        into v_count using new.user_id;
+    if v_count >= v_total then raise exception 'quota_exceeded'; end if;
+
+    return new;
+end;
+$$;
+
+drop trigger if exists guard_tasks_insert on public.tasks;
+create trigger guard_tasks_insert before insert on public.tasks
+    for each row execute function public.guard_user_insert(300, 20000);
+
+drop trigger if exists guard_clients_insert on public.clients;
+create trigger guard_clients_insert before insert on public.clients
+    for each row execute function public.guard_user_insert(60, 5000);
+
+drop trigger if exists guard_projects_insert on public.projects;
+create trigger guard_projects_insert before insert on public.projects
+    for each row execute function public.guard_user_insert(60, 5000);
+
+drop trigger if exists guard_calendars_insert on public.calendars;
+create trigger guard_calendars_insert before insert on public.calendars
+    for each row execute function public.guard_user_insert(20, 100);
+
+-- Caps on sharing fan-out
+create or replace function public.guard_sharing_quota()
+returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+    v_count integer;
+begin
+    if tg_table_name = 'calendar_invites' then
+        select count(*) into v_count from public.calendar_invites where calendar_id = new.calendar_id;
+        if v_count >= 200 then raise exception 'quota_exceeded'; end if;
+    else
+        select count(*) into v_count from public.calendar_members where calendar_id = new.calendar_id;
+        if v_count >= 100 then raise exception 'quota_exceeded'; end if;
+    end if;
+    return new;
+end;
+$$;
+
+drop trigger if exists guard_invites_insert on public.calendar_invites;
+create trigger guard_invites_insert before insert on public.calendar_invites
+    for each row execute function public.guard_sharing_quota();
+
+drop trigger if exists guard_members_insert on public.calendar_members;
+create trigger guard_members_insert before insert on public.calendar_members
+    for each row execute function public.guard_sharing_quota();
+
+-- 13b. Integrity -----------------------------------------------------------------
+
+-- Ownership and creation time can never be rewritten by an UPDATE
+create or replace function public.protect_ownership()
+returns trigger
+language plpgsql set search_path = public as $$
+begin
+    if new.user_id is distinct from old.user_id then
+        raise exception 'forbidden';
+    end if;
+    new.created_at := old.created_at;
+    return new;
+end;
+$$;
+
+drop trigger if exists protect_tasks_ownership on public.tasks;
+create trigger protect_tasks_ownership before update on public.tasks
+    for each row execute function public.protect_ownership();
+drop trigger if exists protect_clients_ownership on public.clients;
+create trigger protect_clients_ownership before update on public.clients
+    for each row execute function public.protect_ownership();
+drop trigger if exists protect_projects_ownership on public.projects;
+create trigger protect_projects_ownership before update on public.projects
+    for each row execute function public.protect_ownership();
+drop trigger if exists protect_calendars_ownership on public.calendars;
+create trigger protect_calendars_ownership before update on public.calendars
+    for each row execute function public.protect_ownership();
+
+-- Foreign keys alone don't stop a user pointing their rows at someone else's UUIDs
+create or replace function public.check_relations()
+returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+    if auth.uid() is null then return new; end if;
+
+    if tg_table_name = 'projects' then
+        if new.client_id is not null
+           and (tg_op = 'INSERT' or new.client_id is distinct from old.client_id)
+           and not exists (select 1 from public.clients c where c.id = new.client_id and c.user_id = auth.uid()) then
+            raise exception 'forbidden';
+        end if;
+    elsif tg_table_name = 'tasks' then
+        if new.project_id is not null
+           and (tg_op = 'INSERT' or new.project_id is distinct from old.project_id)
+           and not exists (select 1 from public.projects p where p.id = new.project_id and p.user_id = auth.uid()) then
+            raise exception 'forbidden';
+        end if;
+        if new.parent_id is not null and new.parent_id = new.id then
+            raise exception 'forbidden';
+        end if;
+    end if;
+    return new;
+end;
+$$;
+
+drop trigger if exists check_projects_relations on public.projects;
+create trigger check_projects_relations before insert or update on public.projects
+    for each row execute function public.check_relations();
+drop trigger if exists check_tasks_relations on public.tasks;
+create trigger check_tasks_relations before insert or update on public.tasks
+    for each row execute function public.check_relations();
+
+-- profiles.email feeds the "already a member" check and collaborator lists, so a
+-- user must not be able to claim someone else's address there.
+create or replace function public.protect_profile()
+returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+    -- depth 1 = a direct client write; nested calls (auth sync trigger) are trusted
+    if auth.uid() is not null and pg_trigger_depth() = 1 then
+        if tg_op = 'UPDATE' then
+            new.id := old.id;
+            new.email := old.email;
+        else
+            new.email := lower(auth.jwt() ->> 'email');
+        end if;
+    end if;
+    return new;
+end;
+$$;
+
+drop trigger if exists protect_profiles on public.profiles;
+create trigger protect_profiles before insert or update on public.profiles
+    for each row execute function public.protect_profile();
+
+-- Keep profiles.email in sync when the confirmed auth e-mail changes
+create or replace function public.sync_profile_email()
+returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+    update public.profiles set email = lower(new.email) where id = new.id;
+    return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_email_changed on auth.users;
+create trigger on_auth_user_email_changed
+    after update of email on auth.users
+    for each row when (old.email is distinct from new.email)
+    execute function public.sync_profile_email();
+
+-- 13c. Validation constraints (NOT VALID: enforced for new/changed rows without
+--      failing on legacy data; run `alter table ... validate constraint ...` once clean)
+do $$
+declare
+    c record;
+begin
+    for c in
+        select * from (values
+            ('profiles',  'profiles_len_chk',  $c$char_length(coalesce(full_name, '')) <= 120 and char_length(coalesce(email, '')) <= 254 and (coalesce(avatar_url, '') = '' or (char_length(avatar_url) <= 2048 and avatar_url ~* '^https://'))$c$),
+            ('clients',   'clients_valid_chk', $c$char_length(name) between 1 and 120 and char_length(coalesce(company, '')) <= 120 and char_length(coalesce(email, '')) <= 254 and (coalesce(email, '') = '' or email ~ '^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$') and char_length(coalesce(phone, '')) <= 32 and char_length(coalesce(notes, '')) <= 5000 and coalesce(hourly_rate, 0) >= 0 and coalesce(currency, 'EUR') ~ '^[A-Za-z]{3}$'$c$),
+            ('projects',  'projects_valid_chk',$c$char_length(title) between 1 and 200 and char_length(coalesce(description, '')) <= 5000 and coalesce(budget, 0) >= 0 and coalesce(quoted_price, 0) >= 0 and coalesce(invoiced_amount, 0) >= 0$c$),
+            ('tasks',     'tasks_valid_chk',   $c$char_length(title) between 1 and 200 and char_length(coalesce(description, '')) <= 5000 and (due_time is null or due_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$') and (duration_minutes is null or duration_minutes between 1 and 1440) and (remind_before is null or remind_before between 0 and 10080) and order_index between -1000000 and 1000000$c$),
+            ('calendars', 'calendars_valid_chk',$c$char_length(name) between 1 and 120 and char_length(coalesce(description, '')) <= 500 and coalesce(color, '#6366f1') ~ '^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$'$c$),
+            ('calendar_invites', 'calendar_invites_valid_chk', $c$char_length(coalesce(email, '')) <= 254 and (max_uses is null or max_uses > 0)$c$)
+        ) as t(tbl, cname, expr)
+    loop
+        execute format('alter table public.%I drop constraint if exists %I', c.tbl, c.cname);
+        execute format('alter table public.%I add constraint %I check (%s) not valid', c.tbl, c.cname, c.expr);
+    end loop;
+end $$;
+
+-- 13d. Least privilege ------------------------------------------------------------
+-- Signed-out visitors never need direct table access (RLS already denies it; this is defence in depth).
+revoke all on all tables in schema public from anon;
+
+-- Functions are executable by PUBLIC by default. Close that for OUR functions only (never blanket-revoke on
+-- the schema: extension functions such as uuid_generate_v4() live here and column defaults call them as the user).
+revoke execute on function
+    public.handle_updated_at(), public.handle_new_user(), public.delete_user_account(),
+    public.calendar_role(uuid), public.can_view_calendar(uuid), public.can_edit_calendar(uuid),
+    public.shares_calendar_with(uuid), public.create_calendar_invite(uuid, text, text),
+    public.get_invite_info(text), public.accept_calendar_invite(text), public.my_pending_invites(),
+    public.decline_calendar_invite(text), public.request_client_key(),
+    public.rate_limit_hit(text, integer, interval), public.guard_user_insert(),
+    public.guard_sharing_quota(), public.protect_ownership(), public.check_relations(),
+    public.protect_profile(), public.sync_profile_email()
+from public, anon, authenticated;
+
+-- RLS policy helpers run as the caller, so signed-in users need them
+grant execute on function public.calendar_role(uuid) to authenticated;
+grant execute on function public.can_view_calendar(uuid) to authenticated;
+grant execute on function public.can_edit_calendar(uuid) to authenticated;
+grant execute on function public.shares_calendar_with(uuid) to authenticated;
+
+-- RPCs used by the client
+grant execute on function public.get_invite_info(text) to anon, authenticated;
+grant execute on function public.create_calendar_invite(uuid, text, text) to authenticated;
+grant execute on function public.accept_calendar_invite(text) to authenticated;
+grant execute on function public.my_pending_invites() to authenticated;
+grant execute on function public.decline_calendar_invite(text) to authenticated;
+grant execute on function public.delete_user_account() to authenticated;

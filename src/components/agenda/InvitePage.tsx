@@ -51,6 +51,8 @@ export const InvitePage: React.FC = () => {
         return t.cal.inviteWrongEmail;
       case 'sharing_unavailable':
         return t.cal.sharingNeedsCloud;
+      case 'rate_limited':
+        return t.account.rateLimitExceeded;
       default:
         return t.cal.inviteInvalid;
     }

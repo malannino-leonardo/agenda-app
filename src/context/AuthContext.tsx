@@ -8,6 +8,7 @@ import {
   resetRateLimit,
   RATE_LIMIT_CONFIGS,
 } from '../lib/rateLimit';
+import { cleanEmail, cleanLine, LIMITS } from '../lib/security';
 
 interface AuthContextType {
   user: User | null;
@@ -229,9 +230,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [fetchProfile]);
 
   // Sign In with email & password
-  const signIn = async (email: string, password: string): Promise<{ error: Error | null }> => {
-    const emailKey = email.trim().toLowerCase();
+  const signIn = async (rawEmail: string, password: string): Promise<{ error: Error | null }> => {
+    const email = cleanEmail(rawEmail);
+    if (!email) return { error: new Error('Please enter a valid email address.') };
+    if (typeof password !== 'string' || password.length < LIMITS.PASSWORD_MIN || password.length > LIMITS.PASSWORD_MAX) {
+      return { error: new Error('Invalid email or password.') };
+    }
+    const emailKey = email;
     const rateLimitKey = `signin_${emailKey}`;
+
+    // Browser-wide cap so rotating e-mail addresses doesn't bypass the per-account limit
+    const deviceCheck = checkRateLimit('signin_device', RATE_LIMIT_CONFIGS.SIGN_IN_DEVICE);
+    if (!deviceCheck.allowed) {
+      return {
+        error: new Error(
+          `Too many login attempts. For security, please wait ${deviceCheck.retryAfterSeconds} second${
+            deviceCheck.retryAfterSeconds === 1 ? '' : 's'
+          } before trying again.`
+        ),
+      };
+    }
+    recordRateLimitAttempt('signin_device', RATE_LIMIT_CONFIGS.SIGN_IN_DEVICE);
 
     const check = checkRateLimit(rateLimitKey, RATE_LIMIT_CONFIGS.SIGN_IN);
     if (!check.allowed) {
@@ -288,10 +307,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Sign Up with email, password & name
   const signUp = async (
-    email: string,
+    rawEmail: string,
     password: string,
-    fullName: string
+    rawFullName: string
   ): Promise<{ error: Error | null }> => {
+    const email = cleanEmail(rawEmail);
+    const fullName = cleanLine(rawFullName, LIMITS.NAME);
+    if (!email) return { error: new Error('Please enter a valid email address.') };
+    if (!fullName) return { error: new Error('Please enter your full name.') };
+    if (typeof password !== 'string' || password.length < LIMITS.PASSWORD_MIN) {
+      return { error: new Error('Password must be at least 8 characters long.') };
+    }
+    if (password.length > LIMITS.PASSWORD_MAX) {
+      return { error: new Error('Password must be at most 128 characters long.') };
+    }
     const rateLimitKey = 'signup_global';
     const check = checkRateLimit(rateLimitKey, RATE_LIMIT_CONFIGS.SIGN_UP);
     if (!check.allowed) {
@@ -356,8 +385,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Update profile name
   const updateProfileName = async (fullName: string): Promise<{ error: Error | null }> => {
-    const trimmed = fullName.trim();
+    const trimmed = cleanLine(fullName, LIMITS.NAME);
     if (!user) return { error: new Error('User not authenticated') };
+    if (!trimmed) return { error: new Error('Please enter your full name.') };
 
     if (isSupabaseConfigured && supabase) {
       const { data: existing } = await supabase
@@ -405,8 +435,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Update Email
   const updateEmail = async (newEmail: string): Promise<{ error: Error | null }> => {
-    const trimmed = newEmail.trim();
+    const trimmed = cleanEmail(newEmail);
     if (!user) return { error: new Error('User not authenticated') };
+    if (!trimmed) return { error: new Error('Please enter a valid email address.') };
 
     const rateLimitKey = `email_change_${user.id}`;
     const check = checkRateLimit(rateLimitKey, RATE_LIMIT_CONFIGS.EMAIL_CHANGE);
@@ -444,6 +475,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     newPassword: string
   ): Promise<{ error: Error | null }> => {
     if (!user || !user.email) return { error: new Error('User not authenticated') };
+    if (typeof newPassword !== 'string' || newPassword.length < LIMITS.PASSWORD_MIN) {
+      return { error: new Error('Password must be at least 8 characters long.') };
+    }
+    if (newPassword.length > LIMITS.PASSWORD_MAX || (currentPassword || '').length > LIMITS.PASSWORD_MAX) {
+      return { error: new Error('Password must be at most 128 characters long.') };
+    }
 
     const rateLimitKey = `pwd_change_${user.id}`;
     const check = checkRateLimit(rateLimitKey, RATE_LIMIT_CONFIGS.PASSWORD_CHANGE);

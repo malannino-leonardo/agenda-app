@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { safeMailto } from '../../lib/security';
 import {
   Plus,
   Mail,
@@ -145,7 +146,8 @@ export const ClientsModule: React.FC = () => {
                       <div className="flex items-center gap-2 truncate">
                         <Mail className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
                         <a
-                          href={`mailto:${client.email}`}
+                          href={safeMailto(client.email)}
+                          rel="noopener noreferrer"
                           className="hover:text-zinc-200 truncate"
                         >
                           {client.email}

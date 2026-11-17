@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { isValidEmail, safeMailto, openExternal } from '../../lib/security';
 import { createPortal } from 'react-dom';
 import {
   X,
@@ -27,7 +28,6 @@ interface ShareCalendarModalProps {
   calendar: Calendar | null;
 }
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const ShareCalendarModal: React.FC<ShareCalendarModalProps> = ({ isOpen, onClose, calendar }) => {
   const {
@@ -85,6 +85,7 @@ export const ShareCalendarModal: React.FC<ShareCalendarModalProps> = ({ isOpen, 
       invalid_email: t.cal.errInvalidEmail,
       forbidden: t.cal.errForbidden,
       sharing_unavailable: t.cal.sharingNeedsCloud,
+      rate_limited: t.account.rateLimitExceeded,
     };
     return map[code] || t.cal.errGeneric;
   };
@@ -118,7 +119,7 @@ export const ShareCalendarModal: React.FC<ShareCalendarModalProps> = ({ isOpen, 
       .replace('{name}', calendar.name)
       .replace('{access}', permission === 'edit' ? t.cal.canEdit.toLowerCase() : t.cal.canView.toLowerCase())
       .replace('{url}', url);
-    return `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    return safeMailto(to, { subject, body }) || '#';
   };
 
   const nativeShare = async (token: string) => {
@@ -138,7 +139,7 @@ export const ShareCalendarModal: React.FC<ShareCalendarModalProps> = ({ isOpen, 
     e.preventDefault();
     setError(null);
     const clean = email.trim().toLowerCase();
-    if (!EMAIL_REGEX.test(clean)) {
+    if (!isValidEmail(clean)) {
       setError(t.cal.errInvalidEmail);
       return;
     }
@@ -148,7 +149,7 @@ export const ShareCalendarModal: React.FC<ShareCalendarModalProps> = ({ isOpen, 
       setEmail('');
       showToast(t.cal.inviteCreated.replace('{email}', clean), 'success');
       // Open the visitor's mail client with the link prefilled: the invite also shows up in-app on login
-      window.open(mailtoFor(invite.token, clean, emailPermission), '_blank');
+      openExternal(mailtoFor(invite.token, clean, emailPermission));
     } catch (err) {
       setError(translateError(err));
     } finally {

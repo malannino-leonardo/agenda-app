@@ -25,10 +25,18 @@ import { loadStoredData, saveStoredData, clearStoredData } from '../lib/storage'
 import { useAuth, getCachedAuthUser } from './AuthContext';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import {
-  checkRateLimit,
-  recordRateLimitAttempt,
+  consumeRateLimit,
   RATE_LIMIT_CONFIGS,
+  type RateLimitConfig,
 } from '../lib/rateLimit';
+import {
+  sanitizeTaskPatch,
+  sanitizeClientPatch,
+  sanitizeProjectPatch,
+  sanitizeCalendarPatch,
+  isValidInviteToken,
+  cleanEmail,
+} from '../lib/security';
 import { buildTaskTree } from '../lib/calendarUtils';
 import { useTaskReminders } from '../hooks/useTaskReminders';
 
@@ -241,6 +249,7 @@ const errorCode = (err: unknown): string => {
     'invite_expired',
     'invite_exhausted',
     'invite_email_mismatch',
+    'rate_limited',
   ];
   return known.find((k) => msg.includes(k)) || msg || 'unknown_error';
 };
@@ -276,6 +285,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       window.setTimeout(() => dismissToast(id), kind === 'error' ? 5000 : 3000);
     },
     [dismissToast]
+  );
+
+  /** Client-side throttle (UX + abuse brake). Real enforcement lives in the database triggers. */
+  const limited = useCallback(
+    (key: string, config: RateLimitConfig, label = 'actions'): boolean => {
+      const res = consumeRateLimit(key, config);
+      if (res.allowed) return true;
+      showToast(`Too many ${label}. Please wait ${res.retryAfterSeconds}s.`, 'error');
+      return false;
+    },
+    [showToast]
   );
 
   // ---- navigation ---------------------------------------------------------
@@ -759,8 +779,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  const updateTask = (taskId: string, updates: Partial<Task>) => {
+  const updateTask = (taskId: string, rawUpdates: Partial<Task>) => {
     if (!requireUser()) return;
+    if (!limited('action_task_update', RATE_LIMIT_CONFIGS.TASK_UPDATE, 'task edits')) return;
+    const updates = sanitizeTaskPatch(rawUpdates);
+    if ('title' in updates && !updates.title) {
+      showToast('A task needs a title.', 'error');
+      return;
+    }
     const target = tasks.find((t) => t.id === taskId);
     if (target && !canEditTask(target)) {
       showToast('You have view-only access to this calendar.', 'info');
@@ -794,6 +820,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const toggleTaskCompletion = (taskId: string) => {
     if (!requireUser()) return;
+    if (!limited('action_task_update', RATE_LIMIT_CONFIGS.TASK_UPDATE, 'task edits')) return;
     const target = tasks.find((t) => t.id === taskId);
     if (!target) return;
     if (!canEditTask(target)) {
@@ -815,8 +842,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const bulkUpdateTasks = (ids: string[], updates: Pick<Partial<Task>, 'status' | 'priority'>) => {
+  const bulkUpdateTasks = (ids: string[], rawUpdates: Pick<Partial<Task>, 'status' | 'priority'>) => {
     if (!requireUser()) return;
+    if (!limited('action_task_update', RATE_LIMIT_CONFIGS.TASK_UPDATE, 'task edits')) return;
+    const updates = sanitizeTaskPatch(rawUpdates);
+    ids = ids.slice(0, 500);
     const editable = Array.from(new Set(ids)).filter((id) => {
       const t = tasks.find((x) => x.id === id);
       return t && canEditTask(t);
@@ -834,6 +864,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const bulkDeleteTasks = (ids: string[]) => {
     if (!requireUser()) return;
+    if (!limited('action_task_delete', RATE_LIMIT_CONFIGS.TASK_DELETE, 'deletions')) return;
+    ids = ids.slice(0, 500);
     const deletable = Array.from(new Set(ids)).filter((id) => {
       const t = tasks.find((x) => x.id === id);
       return t && canEditTask(t);
@@ -874,14 +906,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteTask = (taskId: string) => bulkDeleteTasks([taskId]);
 
-  const addTask = (data: Omit<Task, 'id' | 'created_at' | 'updated_at'>): string | null => {
+  const addTask = (rawData: Omit<Task, 'id' | 'created_at' | 'updated_at'>): string | null => {
     if (!requireUser() || !user) return null;
-    const rateLimitCheck = checkRateLimit('action_task_create', RATE_LIMIT_CONFIGS.TASK_CREATE);
-    if (!rateLimitCheck.allowed) {
-      showToast(`Too many tasks created. Please wait ${rateLimitCheck.retryAfterSeconds}s.`, 'error');
+    if (!limited('action_task_create', RATE_LIMIT_CONFIGS.TASK_CREATE, 'tasks created')) return null;
+    const data = { ...rawData, ...sanitizeTaskPatch(rawData) };
+    if (!data.title) {
+      showToast('A task needs a title.', 'error');
       return null;
     }
-    recordRateLimitAttempt('action_task_create', RATE_LIMIT_CONFIGS.TASK_CREATE);
 
     // Subtasks live in their parent's calendar
     const parent = data.parent_id ? tasks.find((t) => t.id === data.parent_id) : undefined;
@@ -965,13 +997,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // ---- clients / projects (unchanged behaviour) -------------------------------
-  const addClient = (data: Omit<Client, 'id' | 'created_at' | 'updated_at'>) => {
-    const rateLimitCheck = checkRateLimit('action_client_create', RATE_LIMIT_CONFIGS.CLIENT_CREATE);
-    if (!rateLimitCheck.allowed) {
-      console.warn(`Client creation rate limit exceeded. Please wait ${rateLimitCheck.retryAfterSeconds}s.`);
+  const addClient = (rawData: Omit<Client, 'id' | 'created_at' | 'updated_at'>) => {
+    if (!limited('action_client_create', RATE_LIMIT_CONFIGS.CLIENT_CREATE, 'clients created')) return;
+    const data = { ...rawData, ...sanitizeClientPatch(rawData) } as typeof rawData;
+    if (!data.name) {
+      showToast('A client needs a name.', 'error');
       return;
     }
-    recordRateLimitAttempt('action_client_create', RATE_LIMIT_CONFIGS.CLIENT_CREATE);
+    data.currency = data.currency || 'EUR';
 
     const newId = generateUUID();
     const now = new Date().toISOString();
@@ -998,7 +1031,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const updateClient = (id: string, updates: Partial<Client>) => {
+  const updateClient = (id: string, rawUpdates: Partial<Client>) => {
+    if (!limited('action_entity_update', RATE_LIMIT_CONFIGS.ENTITY_UPDATE, 'edits')) return;
+    const updates = sanitizeClientPatch(rawUpdates);
+    if ('name' in updates && !updates.name) return;
     const now = new Date().toISOString();
     setClients((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates, updated_at: now } : c)));
 
@@ -1019,6 +1055,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteClient = (id: string) => {
+    if (!limited('action_entity_delete', RATE_LIMIT_CONFIGS.ENTITY_DELETE, 'deletions')) return;
     setClients((prev) => prev.filter((c) => c.id !== id));
     setProjects((prev) => prev.map((p) => (p.client_id === id ? { ...p, client_id: undefined } : p)));
 
@@ -1034,13 +1071,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const addProject = (data: Omit<Project, 'id' | 'created_at' | 'updated_at'>) => {
-    const rateLimitCheck = checkRateLimit('action_project_create', RATE_LIMIT_CONFIGS.PROJECT_CREATE);
-    if (!rateLimitCheck.allowed) {
-      console.warn(`Project creation rate limit exceeded. Please wait ${rateLimitCheck.retryAfterSeconds}s.`);
+  const addProject = (rawData: Omit<Project, 'id' | 'created_at' | 'updated_at'>) => {
+    if (!limited('action_project_create', RATE_LIMIT_CONFIGS.PROJECT_CREATE, 'projects created')) return;
+    const data = { ...rawData, ...sanitizeProjectPatch(rawData) } as typeof rawData;
+    if (!data.title) {
+      showToast('A project needs a title.', 'error');
       return;
     }
-    recordRateLimitAttempt('action_project_create', RATE_LIMIT_CONFIGS.PROJECT_CREATE);
 
     const newId = generateUUID();
     const now = new Date().toISOString();
@@ -1076,7 +1113,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const updateProject = (id: string, updates: Partial<Project>) => {
+  const updateProject = (id: string, rawUpdates: Partial<Project>) => {
+    if (!limited('action_entity_update', RATE_LIMIT_CONFIGS.ENTITY_UPDATE, 'edits')) return;
+    const updates = sanitizeProjectPatch(rawUpdates);
+    if ('title' in updates && !updates.title) return;
     const now = new Date().toISOString();
     setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates, updated_at: now } : p)));
 
@@ -1099,6 +1139,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteProject = (id: string) => {
+    if (!limited('action_entity_delete', RATE_LIMIT_CONFIGS.ENTITY_DELETE, 'deletions')) return;
     setProjects((prev) => prev.filter((p) => p.id !== id));
     setTasks((prev) => prev.filter((t) => t.project_id !== id));
 
@@ -1116,7 +1157,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // ---- calendars -------------------------------------------------------------
   const addCalendar = useCallback(
-    (data: { name: string; color: string; description?: string }): Calendar => {
+    (input: { name: string; color: string; description?: string }): Calendar => {
+      const data = { ...input, ...sanitizeCalendarPatch(input) } as { name: string; color: string; description?: string };
+      consumeRateLimit('action_calendar_create', RATE_LIMIT_CONFIGS.CALENDAR_CREATE);
       const newId = generateUUID();
       const now = new Date().toISOString();
       const newCal: Calendar = {
@@ -1157,7 +1200,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 
   const updateCalendar = useCallback(
-    (id: string, updates: Partial<Calendar>) => {
+    (id: string, rawUpdates: Partial<Calendar>) => {
+      const updates = sanitizeCalendarPatch(rawUpdates);
       const cal = calendars.find((c) => c.id === id);
       if (cal && cal.role !== 'owner') {
         showToast('Only the owner can edit this calendar.', 'info');
@@ -1278,6 +1322,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     email: string | null
   ): Promise<CalendarInvite> => {
     const client = requireSharing();
+    const rl = consumeRateLimit('action_invite_create', RATE_LIMIT_CONFIGS.INVITE_CREATE);
+    if (!rl.allowed) throw new Error('rate_limited');
+    if (email !== null && !cleanEmail(email)) throw new Error('invalid_email');
     const { data, error } = await client.rpc('create_calendar_invite', {
       p_calendar: calendarId,
       p_permission: permission,
@@ -1336,6 +1383,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const getInviteInfo = async (token: string): Promise<InviteInfo> => {
     if (!isSupabaseConfigured || !supabase) return { valid: false, reason: 'sharing_unavailable' };
+    if (!isValidInviteToken(token)) return { valid: false, reason: 'invite_invalid' };
+    if (!consumeRateLimit('action_invite_lookup', RATE_LIMIT_CONFIGS.INVITE_LOOKUP).allowed) {
+      return { valid: false, reason: 'rate_limited' };
+    }
     const { data, error } = await supabase.rpc('get_invite_info', { p_token: token });
     if (error) return { valid: false, reason: errorCode(error) };
     return data as InviteInfo;
@@ -1343,6 +1394,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const acceptInvite = async (token: string): Promise<string> => {
     const client = requireSharing();
+    if (!isValidInviteToken(token)) throw new Error('invite_invalid');
+    if (!consumeRateLimit('action_invite_lookup', RATE_LIMIT_CONFIGS.INVITE_LOOKUP).allowed) {
+      throw new Error('rate_limited');
+    }
     const { data, error } = await client.rpc('accept_calendar_invite', { p_token: token });
     if (error) throw new Error(errorCode(error));
     rememberPendingInvite(null);
